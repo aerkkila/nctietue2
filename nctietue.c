@@ -2,36 +2,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include "nctietue.h"
 
-typedef struct {
-  char* name;
-  int ndims;
-  char** dimnames; //pointers to names in dimension-structs
-  size_t* dimlens;
-  size_t len;
-  int size1;
-  nc_type xtype;
-  void* data;
-} variable;
-
-typedef struct {
-  char* name;
-  size_t len;
-  variable* coord;
-} dimension;
-
-typedef struct {
-  dimension* dims;
-  variable* vars;
-  int nvars;
-  int ndims;
-  char** dimnames; //pointers to names in dimension-structs
-  char** varnames; //pointers to names in variable-structs
-  size_t* dimlens;
-} variable_set;
-
-void print_variable_set(variable_set* vs);
-void print_variable(variable* var, const char* indent);
 const char* error_color   = "\033[1;31m";
 const char* varset_color  = "\033[1;93m";
 const char* varname_color = "\033[92m";
