@@ -39,7 +39,7 @@ const char* type_color    = "\033[35m";
 const char* default_color = "\033[0m";
 
 int ncret;
-#define NCERROR(arg) printf("%sNetcdf-error:\033[0m %s\n", error_color, nc_strerror(arg))
+#define NCERROR(arg) printf("%sNetcdf-error:%s %s\n", error_color, nc_strerror(arg), default_color)
 #define NCFUNK(fun, ...)		\
   do {					\
     if((ncret = fun(__VA_ARGS__))) {	\
