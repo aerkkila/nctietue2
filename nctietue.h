@@ -2,6 +2,7 @@
 #define __NC_TIETUE__
 typedef struct {
   char* name;
+  char iscoordinate;
   int ndims;
   char** dimnames; //pointers to names in dimension-structs
   size_t* dimlens;
