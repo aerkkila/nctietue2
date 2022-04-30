@@ -20,33 +20,42 @@ int ncret;
     }					\
   } while(0)
 
-/*These macros are used to set array of functions pointers of form print_NC_BYTE(void* arr, int n)
-  nc_type value can be then be used to get the right function pointer from the array.*/
+/*With this macro one can define functions for all variable types without repeating things.
+  First define _SET in a wanted way, then add _TYPES then undef _SET
+  Functions can be further added into an array of function pointers with the same syntax
+  which allows use of nc_type (aka int) variable as an index to access the right function.
+  Reading the code will make this clearer.*/
 #define _TYPES					\
   _SET(NC_BYTE, hhi, char)			\
-    _SET(NC_UBYTE, hhu, unsigned char)		\
-    _SET(NC_CHAR, c, char)			\
-    _SET(NC_SHORT, hi, short)			\
-    _SET(NC_USHORT, hu, unsigned short)		\
-    _SET(NC_INT, i, int)			\
-    _SET(NC_UINT, u, unsigned)			\
-    _SET(NC_UINT64, llu, long long unsigned)	\
-    _SET(NC_INT64, lli, long long int)		\
-    _SET(NC_FLOAT, .4f, float)			\
-    _SET(NC_DOUBLE, .4lf, double)		\
-    _SET(NC_STRING, s, char*)
-#define _SET(nctype, form, ctype)		\
-  void print_##nctype(void* arr, int i) {	\
-    printf("%"#form", ", ((ctype*)arr)[i]);	\
+  _SET(NC_UBYTE, hhu, unsigned char)		\
+  _SET(NC_CHAR, c, char)			\
+  _SET(NC_SHORT, hi, short)			\
+  _SET(NC_USHORT, hu, unsigned short)		\
+  _SET(NC_INT, i, int)	         		\
+  _SET(NC_UINT, u, unsigned)			\
+  _SET(NC_UINT64, llu, long long unsigned)	\
+  _SET(NC_INT64, lli, long long int)		\
+  _SET(NC_FLOAT, .4f, float)			\
+  _SET(NC_DOUBLE, .4lf, double)	        	\
+  _SET(NC_STRING, s, char*)
+
+/*print functions for all variable types*/
+#define _SET(nctype, form, ctype)			\
+  void print_##nctype(void* arr, int i, int end) {	\
+    for(; i<end; i++)					\
+      printf("%"#form", ", ((ctype*)arr)[i]);		\
   }
-  _TYPES
+_TYPES
 #undef _SET
+
+/*set all print-function-pointers into an array using nc_type as index*/
 #define _SET(nctype, ...) [nctype]=print_##nctype,
-  void (*printfunctions[])(void*, int) =
+void (*printfunctions[])(void*, int, int) =
   {
    _TYPES
   };
 #undef _SET
+
 #define _SET(nctype, form, ctype) [nctype]=#ctype,
 char* type_names[] =
   {
@@ -57,16 +66,13 @@ char* type_names[] =
 
 void print_variable_data(variable* var) {
   void (*printfun)(void*,int) = printfunctions[var->xtype];
-  if(var->len <= 16) {
-    for(int i=0; i<var->len; i++)
-      printfun(var->data, i);
+  if(var->len <= 17) {
+    printfun(var->data, 0, var->len);
     return;
   }
-  for(int i=0; i<8; i++)
-    printfun(var->data, i);
+  printfun(var->data, 0, 8);
   printf(" ..., ");
-  for(int i=var->len-8; i<var->len; i++)
-    printfun(var->data, i);
+  printfun(var->data, var->len-8, var->len);
 }
 
 void print_variable(variable* var, const char* indent) {
