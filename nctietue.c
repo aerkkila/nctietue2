@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdarg.h>
 #include "nctietue.h"
 
 const char* error_color   = "\033[1;31m";
@@ -54,6 +55,28 @@ char* type_names[] =
   };
 #undef _SET
 #undef _TYPES
+
+variable* var_pluseq_vars(variable* var, ...) {
+  va_list ptr;
+  int va_len = 4;
+  int i=0;
+  while(1) {
+    va_start(ptr, var);
+    for(int _i=0; _i<i; _i++)
+      va_arg(ptr, void*);
+    for(; i<va_len; i++) {
+      variable* v1 = va_arg(ptr, void*);
+      if(!v1)
+	goto FINISHED;
+      var_pluseq_var(var, v1);
+    }
+    va_end(ptr);
+    va_len *= 2;
+  }
+ FINISHED:
+  va_end(ptr);
+  return var;
+}
 
 void print_variable_data(variable* var) {
   void (*printfun)(void*,int) = printfunctions[var->xtype];

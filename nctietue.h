@@ -28,13 +28,14 @@ typedef struct {
   size_t* dimlens;
 } variable_set;
 
+variable* var_plus_vars(variable*, ...);
+void print_variable_set(variable_set* vs);
+void print_variable(variable* var, const char* indent);
+void print_variable_data(variable*);
 variable_set* read_ncfile(const char* restrict filename, variable_set* dest);
 variable* read_ncvariable(int ncid, int varid, dimension* dims, variable* dest);
 dimension* read_ncdim(int ncid, int dimid, dimension* dest);
 void free_dimension(dimension*);
 void free_variable(variable*);
 void free_variable_set(variable_set*);
-void print_variable_set(variable_set* vs);
-void print_variable(variable* var, const char* indent);
-void print_variable_data(variable*);
 #endif
