@@ -305,3 +305,49 @@ void free_nct_vset(nct_vset* vs) {
   free(vs->varnames);
   free(vs->dimlens);
 }
+
+nct_var* to_nct_var(void* arr, nct_var* dest, size_t len, nc_type xtype, char* name) {
+  if(!dest)
+    dest = calloc(1, sizeof(nct_var));
+  dest->name = name;
+  dest->len = len;
+  dest->size1 = nctypelen(xtype);
+  dest->xtype = xtype;
+  dest->data = arr;
+  return dest;
+}
+
+nct_var* copy_to_nct_var(void* arr, nct_var* dest, size_t len, nc_type xtype, char* name) {
+  if(!dest)
+    dest = calloc(1, sizeof(nct_var));
+  dest->name = name;
+  dest->len = len;
+  dest->size1 = nctypelen(xtype);
+  dest->xtype = xtype;
+  dest->data = malloc(len*dest->size1);
+  memcpy(dest->data, arr, len*dest->size1);
+  return dest;
+}
+
+nct_dim* to_nct_coord(void* arr, size_t len, nc_type xtype, char* name) {
+  nct_dim* destd = calloc(1, sizeof(nct_dim));
+  nct_var* destv = calloc(1, sizeof(nct_var));
+  destd->name = name;
+  destd->len = len;
+  destd->coord = destv;
+
+  destv->name = name;
+  destv->iscoordinate = 1;
+  destv->ndims = 1;
+  destv->dimnames = malloc(sizeof(char*)+sizeof(size_t)+sizeof(int));
+  *destv->dimnames = destd->name;
+  destv->dimlens = (size_t*)(destv->dimnames+1);
+  *destv->dimlens = destd->len;
+  destv->dimids = (int*)(destv->dimnames+1);
+  *destv->dimids = 0;
+  destv->len = len;
+  destv->size1 = nctypelen(xtype);
+  destv->xtype = xtype;
+  destv->data = arr;
+  return destd;
+}

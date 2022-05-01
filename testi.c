@@ -1,6 +1,14 @@
 #include "nctietue.c"
 
 int main(int argc, char** argv) {
+  int *latdata = malloc(5*sizeof(int));
+  for(int i=0; i<5; i++)
+    latdata[i] = i*i;
+  nct_dim* lat = to_nct_coord(latdata, 5, NC_INT, strdup("lat"));
+  print_nct_var(lat->coord, "");
+  free_nct_var(lat->coord);
+  free_nct_dim(lat);
+  free(lat);
   nct_init();
   nct_vset* vs = read_ncfile("../koodit/köppen.nc", NULL);
   print_nct_vset(vs);

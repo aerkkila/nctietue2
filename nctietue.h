@@ -93,4 +93,7 @@ nct_vset* nct_vsetcpy(nct_vset* dest, const nct_vset* src);
 void free_nct_dim(nct_dim*);
 void free_nct_var(nct_var*);
 void free_nct_vset(nct_vset*);
+nct_var* to_nct_var(void* arr, nct_var* dest, size_t len, nc_type xtype, char* name);
+nct_var* copy_to_nct_var(void* arr, nct_var* dest, size_t len, nc_type xtype, char* name);
+nct_dim* to_nct_coord(void* arr, size_t len, nc_type xtype, char* name);
 #endif
