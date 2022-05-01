@@ -27,20 +27,20 @@ int ncret;
     for(; i<end; i++)					\
       printf("%"#form", ", ((ctype*)arr)[i]);		\
   }
-APPLY_FOR_ALL_TYPES
+ALL_TYPES
 #undef ONE_TYPE
 
 #define ONE_TYPE(nctype, ...) [nctype]=print_##nctype, //array of printfunctions
 void (*printfunctions[])(void*, int, int) =
   {
-   APPLY_FOR_ALL_TYPES
+   ALL_TYPES
   };
 #undef ONE_TYPE
 
 #define ONE_TYPE(nctype, form, ctype) [nctype]=#ctype, //array of type names
 char* type_names[] =
   {
-   APPLY_FOR_ALL_TYPES
+   ALL_TYPES
   };
 #undef ONE_TYPE
 
@@ -82,50 +82,62 @@ variable* var_from_vset(variable_set* vs, char* name) {
 }
 
 /*–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
- * define pluseq-functions for all types
+ * define all oper-eq-functions for all types
+ * using operations_and_types.h which defines all their combinations
  *––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––*/
 
-#define ONE_TYPE(nctype, form, ctype)					\
-  variable* var_pluseq_var_##nctype(variable* v0, variable* v1)	{	\
+#define OPERATION(nctype, form, ctype, opername, oper)			\
+  variable* varvar_##opername##_##nctype(variable* v0, variable* v1) {	\
     for(size_t i=0; i<v0->len; i++)					\
-      ((ctype*)v0->data)[i] += ((ctype*)v1->data)[i];			\
+      ((ctype*)v0->data)[i] oper ((ctype*)v1->data)[i];			\
     return v0;								\
   }
-ALL_EXCEPT_STRING
-#undef ONE_TYPE
+#include "operations_and_types.h"
+#undef OPERATION
 
-#define ONE_TYPE(nctype, form, ctype) [nctype]=var_pluseq_var_##nctype, //array of pluseq functions
-variable* (*var_pluseq_var_functions[])(variable* v0, variable* v1) =
-  {
-   ALL_EXCEPT_STRING
-  };
-#undef onetype
+/*Define arrays of the functions. NC_STRING has greatest index.
+  A separate init-function is needed to put function pointers into the arrays.*/
+#define ONE_OPERATION(opername, a) variable* (*varvar_##opername##_functions[NC_STRING])(variable* v0, variable* v1);
+ALL_OPERATIONS
+#undef ONE_OPERATION
 
-variable* var_pluseq_var(variable* v0, variable* v1) {
-  return var_pluseq_var_functions[v0->xtype](v0, v1);
-}
-
-variable* var_pluseq_vars(variable* var, ...) {
-  va_list ptr;
-  int va_len = 4;
-  int i=0;
-  while(1) {
-    va_start(ptr, var);
-    for(int _i=0; _i<i; _i++)
-      va_arg(ptr, void*);
-    for(; i<va_len; i++) {
-      variable* v1 = va_arg(ptr, void*);
-      if(!v1)
-	goto FINISHED;
-      var_pluseq_var(var, v1);
-    }
-    va_end(ptr);
-    va_len *= 2;
+#define ONE_OPERATION(opername, oper)				\
+  variable* varvar_##opername(variable* v0, variable* v1) {	\
+    return varvar_##opername##_functions[v0->xtype](v0, v1);	\
   }
- FINISHED:
-  va_end(ptr);
-  return var;
+ALL_OPERATIONS
+#undef ONE_OPERATION
+
+#define ONE_OPERATION(opername, oper)			\
+  variable* varvars_##opername(variable* var, ...) {	\
+  va_list ptr;						\
+  int va_len = 4;					\
+  int i=0;						\
+  while(1) {						\
+    va_start(ptr, var);					\
+    for(int _i=0; _i<i; _i++)				\
+      va_arg(ptr, void*);				\
+    for(; i<va_len; i++) {				\
+      variable* v1 = va_arg(ptr, void*);		\
+      if(!v1)						\
+	goto FINISHED;					\
+      varvar_##opername(var, v1);			\
+    }							\
+    va_end(ptr);					\
+    va_len *= 2;					\
+  }							\
+FINISHED:						\
+ va_end(ptr);						\
+ return var;						\
+ }
+ALL_OPERATIONS
+#undef ONE_OPERATION
+
+#define OPERATION(nctype, a, b, opername, c) varvar_##opername##_functions[nctype] = varvar_##opername##_##nctype;
+void nctietue_init() {
+#include "operations_and_types.h"
 }
+#undef OPERATION
 
 /*–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
  * Reading and writing data

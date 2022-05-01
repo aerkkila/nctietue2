@@ -30,11 +30,11 @@ typedef struct {
 } variable_set;
 
 /*With this macro one can define functions for all variable types without repeating things.
-  First define ONE_TYPE in a wanted way, then add APPLY_FOR_ALL_TYPES then undef ONE_TYPE
+  First define ONE_TYPE in a wanted way, then add ALL_TYPES then undef ONE_TYPE
   Functions can be further added into an array of function pointers with the same syntax
   which allows use of nc_type (int) variable as an index to access the right function.
   Reading the code will make this clearer.*/
-#define ALL_EXCEPT_STRING			\
+#define ALL_TYPES_EXCEPT_STRING			\
   ONE_TYPE(NC_BYTE, hhi, char)			\
   ONE_TYPE(NC_UBYTE, hhu, unsigned char)     	\
   ONE_TYPE(NC_CHAR, c, char)			\
@@ -46,22 +46,42 @@ typedef struct {
   ONE_TYPE(NC_INT64, lli, long long int)	\
   ONE_TYPE(NC_FLOAT, .4f, float)		\
   ONE_TYPE(NC_DOUBLE, .4lf, double)
-#define APPLY_FOR_ALL_TYPES			\
-  ALL_EXCEPT_STRING				\
+#define ALL_TYPES				\
+  ALL_TYPES_EXCEPT_STRING			\
   ONE_TYPE(NC_STRING, s, char*)
 
+/*The same thing is done here with operations than with types*/
+#define ALL_OPERATIONS				\
+  ONE_OPERATION(pluseq, +=)         		\
+  ONE_OPERATION(minuseq, -=)       		\
+  ONE_OPERATION(muleq, *=)        		\
+  ONE_OPERATION(diveq, /=)      		\
+  ONE_OPERATION(modeq, %=)        		\
+  ONE_OPERATION(bitoreq, |=)     		\
+  ONE_OPERATION(bitandeq, &=)      		\
+  ONE_OPERATION(bitxoreq, ^=)      		\
+  ONE_OPERATION(bitlshifteq, <<=)		\
+  ONE_OPERATION(bitrshifteq, >>=)
+
+/*All allowed combinations of types (except string) and operations are in "operations_and_types.h"*/
+
 #define ONE_TYPE(nctype, ...) void print_##nctype(void* arr, int i, int end);
-APPLY_FOR_ALL_TYPES
+ALL_TYPES
 #undef ONE_TYPE
 void print_variable_data(variable*);
 void print_variable(variable* var, const char* indent);
 void print_variable_set(variable_set* vs);
 variable* var_from_vset(variable_set* vs, char* name);
-variable* var_pluseq_vars(variable*, ...);
-variable* var_pluseq_var(variable*, variable*);
-#define ONE_TYPE(nctype, ...) variable* var_pluseq_var_##nctype(variable*, variable*);
-ALL_EXCEPT_STRING
-#undef ONE_TYPE
+#define OPERATION(nctype, a, b, opername, c) variable* varvar_##opername##_##nctype(variable*, variable*);
+#include "operations_and_types.h"
+#undef OPERATION
+#define ONE_OPERATION(opername, a) variable* varvar_##opername(variable*, variable*);
+ALL_OPERATIONS
+#undef ONE_OPERATION
+#define ONE_OPERATION(opername, a) variable* varvars_##opername(variable*, ...);
+ALL_OPERATIONS
+#undef ONE_OPERATION
+void nctietue_init();
 dimension* read_ncdim(int ncid, int dimid, dimension* dest);
 variable* read_ncvariable(int ncid, int varid, dimension* dims, variable* dest);
 variable_set* read_ncfile(const char* restrict filename, variable_set* dest);
