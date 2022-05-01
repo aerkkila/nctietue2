@@ -332,18 +332,18 @@ nct_var* copy_to_nct_var(void* arr, nct_var* dest, size_t len, nc_type xtype, ch
 nct_dim* to_nct_coord(void* arr, size_t len, nc_type xtype, char* name) {
   nct_dim* destd = calloc(1, sizeof(nct_dim));
   nct_var* destv = calloc(1, sizeof(nct_var));
-  destd->name = name;
+  destd->name = strdup(name);
   destd->len = len;
   destd->coord = destv;
 
-  destv->name = name;
+  destv->name = strdup(name);
   destv->iscoordinate = 1;
   destv->ndims = 1;
   destv->dimnames = malloc(sizeof(char*)+sizeof(size_t)+sizeof(int));
   *destv->dimnames = destd->name;
   destv->dimlens = (size_t*)(destv->dimnames+1);
   *destv->dimlens = destd->len;
-  destv->dimids = (int*)(destv->dimnames+1);
+  destv->dimids = (int*)(destv->dimlens+1);
   *destv->dimids = 0;
   destv->len = len;
   destv->size1 = nctypelen(xtype);
