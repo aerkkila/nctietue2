@@ -4,35 +4,35 @@ typedef struct {
   char* name;
   char iscoordinate;
   int ndims;
-  char** dimnames; //pointers to names in dimension-structs
+  char** dimnames; //pointers to names in nct_dim-structs
   size_t* dimlens; //
   int* dimids;     //these three arrays come from one malloc for dimnames + dimlens + dimids
   size_t len;
   int size1;
   nc_type xtype;
   void* data;
-} variable;
+} nct_var;
 
 typedef struct {
   char* name;
   size_t len;
-  variable* coord;
-} dimension;
+  nct_var* coord;
+} nct_dim;
 
 typedef struct {
   int ndims;
-  dimension* dims;
-  char** dimnames; //pointers to names in dimension-structs
+  nct_dim* dims;
+  char** dimnames; //pointers to names in nct_dim-structs
   size_t* dimlens;
   int nvars;
-  variable* vars;
-  char** varnames; //pointers to names in variable-structs
-} variable_set;
+  nct_var* vars;
+  char** varnames; //pointers to names in nct_var-structs
+} nct_vset;
 
-/*With this macro one can define functions for all variable types without repeating things.
+/*With this macro one can define functions for all nct_var types without repeating things.
   First define ONE_TYPE in a wanted way, then add ALL_TYPES then undef ONE_TYPE
   Functions can be further added into an array of function pointers with the same syntax
-  which allows use of nc_type (int) variable as an index to access the right function.
+  which allows use of nc_type (int) nct_var as an index to access the right function.
   Reading the code will make this clearer.*/
 #define ALL_TYPES_EXCEPT_STRING			\
   ONE_TYPE(NC_BYTE, hhi, char)			\
@@ -68,29 +68,29 @@ typedef struct {
 #define ONE_TYPE(nctype, ...) void print_##nctype(void* arr, int i, int end);
 ALL_TYPES
 #undef ONE_TYPE
-void print_variable_data(variable*);
-void print_variable(variable* var, const char* indent);
-void print_variable_set(variable_set* vs);
-variable* var_from_vset(variable_set* vs, char* name);
-#define OPERATION(nctype, a, b, opername, c) variable* varvar_##opername##_##nctype(variable*, variable*);
+void print_nct_var_data(nct_var*);
+void print_nct_var(nct_var* var, const char* indent);
+void print_nct_vset(nct_vset* vs);
+nct_var* var_from_vset(nct_vset* vs, char* name);
+#define OPERATION(nctype, a, b, opername, c) nct_var* varvar_##opername##_##nctype(nct_var*, nct_var*);
 #include "operations_and_types.h"
 #undef OPERATION
-#define ONE_OPERATION(opername, a) variable* varvar_##opername(variable*, variable*);
+#define ONE_OPERATION(opername, a) nct_var* varvar_##opername(nct_var*, nct_var*);
 ALL_OPERATIONS
 #undef ONE_OPERATION
-#define ONE_OPERATION(opername, a) variable* varvars_##opername(variable*, ...);
+#define ONE_OPERATION(opername, a) nct_var* varvars_##opername(nct_var*, ...);
 ALL_OPERATIONS
 #undef ONE_OPERATION
-void nctietue_init();
-dimension* read_ncdim(int ncid, int dimid, dimension* dest);
-variable* read_ncvariable(int ncid, int varid, dimension* dims, variable* dest);
-variable_set* read_ncfile(const char* restrict filename, variable_set* dest);
-void link_variables_to_dimnames(variable_set* vs);
-void link_dims_to_coords(variable_set* dest);
-dimension* dimcpy(dimension* dest, const dimension* src);
-variable* varcpy(variable* dest, const variable* src);
-variable_set* vsetcpy(variable_set* dest, const variable_set* src);
-void free_dimension(dimension*);
-void free_variable(variable*);
-void free_variable_set(variable_set*);
+void nct_init();
+nct_dim* read_nct_dim(int ncid, int dimid, nct_dim* dest);
+nct_var* read_nct_var(int ncid, int varid, nct_dim* dims, nct_var* dest);
+nct_vset* read_ncfile(const char* restrict filename, nct_vset* dest);
+void link_nct_vars_to_dimnames(nct_vset* vs);
+void link_dims_to_coords(nct_vset* dest);
+nct_dim* nct_dimcpy(nct_dim* dest, const nct_dim* src);
+nct_var* nct_varcpy(nct_var* dest, const nct_var* src);
+nct_vset* nct_vsetcpy(nct_vset* dest, const nct_vset* src);
+void free_nct_dim(nct_dim*);
+void free_nct_var(nct_var*);
+void free_nct_vset(nct_vset*);
 #endif

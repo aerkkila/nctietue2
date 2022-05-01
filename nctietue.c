@@ -12,7 +12,7 @@ const char* type_color    = "\033[35m";
 const char* default_color = "\033[0m";
 
 int ncret;
-#define NCERROR(arg) printf("%sNetcdf-error:%s %s\n", error_color, nc_strerror(arg), default_color)
+#define NCERROR(arg) printf("%sNetcdf-error: %s%s\n", error_color, default_color, nc_strerror(arg))
 #define NCFUNK(fun, ...)		\
   do {					\
     if((ncret = fun(__VA_ARGS__))) {	\
@@ -21,7 +21,7 @@ int ncret;
     }					\
   } while(0)
 
-/*printfunctions for all variable types*/
+/*printfunctions for all nct_var types*/
 #define ONE_TYPE(nctype, form, ctype)			\
   void print_##nctype(void* arr, int i, int end) {	\
     for(; i<end; i++)					\
@@ -44,7 +44,7 @@ char* type_names[] =
   };
 #undef ONE_TYPE
 
-void print_variable_data(variable* var) {
+void print_nct_var_data(nct_var* var) {
   void (*printfun)(void*,int,int) = printfunctions[var->xtype];
   if(var->len <= 17) {
     printfun(var->data, 0, var->len);
@@ -55,7 +55,7 @@ void print_variable_data(variable* var) {
   printfun(var->data, var->len-8, var->len);
 }
 
-void print_variable(variable* var, const char* indent) {
+void print_nct_var(nct_var* var, const char* indent) {
   printf("%s%s%s %s%s(%zu)%s%s:\n%s  %i dims: ( ",
 	 indent, type_color, type_names[var->xtype],
 	 varname_color, var->name, var->len, default_color, var->iscoordinate? " (coordinate)": "",
@@ -64,17 +64,17 @@ void print_variable(variable* var, const char* indent) {
     printf("%s(%zu), ", var->dimnames[i], var->dimlens[i]);
   printf(")\n");
   printf("%s  [", indent);
-  print_variable_data(var);
+  print_nct_var_data(var);
   puts("]");
 }
 
-void print_variable_set(variable_set* vs) {
-  printf("%s%i variables, %i dimensions%s\n", varset_color, vs->nvars, vs->ndims, default_color);
+void print_nct_vset(nct_vset* vs) {
+  printf("%s%i nct_vars, %i dims%s\n", varset_color, vs->nvars, vs->ndims, default_color);
   for(int i=0; i<vs->nvars; i++)
-    print_variable(vs->vars+i, "  ");
+    print_nct_var(vs->vars+i, "  ");
 }
 
-variable* var_from_vset(variable_set* vs, char* name) {
+nct_var* var_from_vset(nct_vset* vs, char* name) {
   for(int i=0; i<vs->nvars; i++)
     if(!strcmp(vs->vars[i].name, name))
       return vs->vars+i;
@@ -87,7 +87,7 @@ variable* var_from_vset(variable_set* vs, char* name) {
  *––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––*/
 
 #define OPERATION(nctype, form, ctype, opername, oper)			\
-  variable* varvar_##opername##_##nctype(variable* v0, variable* v1) {	\
+  nct_var* varvar_##opername##_##nctype(nct_var* v0, nct_var* v1) {	\
     for(size_t i=0; i<v0->len; i++)					\
       ((ctype*)v0->data)[i] oper ((ctype*)v1->data)[i];			\
     return v0;								\
@@ -97,19 +97,19 @@ variable* var_from_vset(variable_set* vs, char* name) {
 
 /*Define arrays of the functions. NC_STRING has greatest index.
   A separate init-function is needed to put function pointers into the arrays.*/
-#define ONE_OPERATION(opername, a) variable* (*varvar_##opername##_functions[NC_STRING])(variable* v0, variable* v1);
+#define ONE_OPERATION(opername, a) nct_var* (*varvar_##opername##_functions[NC_STRING])(nct_var* v0, nct_var* v1);
 ALL_OPERATIONS
 #undef ONE_OPERATION
 
 #define ONE_OPERATION(opername, oper)				\
-  variable* varvar_##opername(variable* v0, variable* v1) {	\
+  nct_var* varvar_##opername(nct_var* v0, nct_var* v1) {	\
     return varvar_##opername##_functions[v0->xtype](v0, v1);	\
   }
 ALL_OPERATIONS
 #undef ONE_OPERATION
 
 #define ONE_OPERATION(opername, oper)			\
-  variable* varvars_##opername(variable* var, ...) {	\
+  nct_var* varvars_##opername(nct_var* var, ...) {	\
   va_list ptr;						\
   int va_len = 4;					\
   int i=0;						\
@@ -118,7 +118,7 @@ ALL_OPERATIONS
     for(int _i=0; _i<i; _i++)				\
       va_arg(ptr, void*);				\
     for(; i<va_len; i++) {				\
-      variable* v1 = va_arg(ptr, void*);		\
+      nct_var* v1 = va_arg(ptr, void*);		\
       if(!v1)						\
 	goto FINISHED;					\
       varvar_##opername(var, v1);			\
@@ -134,7 +134,7 @@ ALL_OPERATIONS
 #undef ONE_OPERATION
 
 #define OPERATION(nctype, a, b, opername, c) varvar_##opername##_functions[nctype] = varvar_##opername##_##nctype;
-void nctietue_init() {
+void nct_init() {
 #include "operations_and_types.h"
 }
 #undef OPERATION
@@ -143,22 +143,22 @@ void nctietue_init() {
  * Reading and writing data
  *––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––*/
 
-dimension* read_ncdim(int ncid, int dimid, dimension* dest) {
+nct_dim* read_nct_dim(int ncid, int dimid, nct_dim* dest) {
   char name[256];
   if(!dest)
-    dest = calloc(1, sizeof(dimension));
+    dest = calloc(1, sizeof(nct_dim));
   size_t* len_p = &dest->len;
   nc_inq_dim(ncid, dimid, name, len_p);
   dest->name = strdup(name);
   return dest;
 }
 
-variable* read_ncvariable(int ncid, int varid, dimension* dims, variable* dest) {
+nct_var* read_nct_var(int ncid, int varid, nct_dim* dims, nct_var* dest) {
   int ndims, dimids[128];
   nc_type xtype;
   char name[256];
   if(!dest)
-    dest = calloc(1, sizeof(variable));
+    dest = calloc(1, sizeof(nct_var));
   NCFUNK(nc_inq_var, ncid, varid, name, &xtype, &ndims, dimids, NULL);
   dest->name = strdup(name);
   dest->ndims = ndims;
@@ -179,22 +179,22 @@ variable* read_ncvariable(int ncid, int varid, dimension* dims, variable* dest) 
   return dest;
 }
 
-variable_set* read_ncfile(const char* restrict filename, variable_set* dest) {
+nct_vset* read_ncfile(const char* restrict filename, nct_vset* dest) {
   int ncid, id;
   if(!dest)
-    dest = calloc(1, sizeof(variable_set));
+    dest = calloc(1, sizeof(nct_vset));
   NCFUNK(nc_open, filename, NC_NOWRITE, &ncid);
   NCFUNK(nc_inq_ndims, ncid, &(dest->ndims));
   NCFUNK(nc_inq_nvars, ncid, &(dest->nvars));
-  dest->dims = calloc(dest->ndims, sizeof(dimension));
-  dest->vars = calloc(dest->nvars, sizeof(variable));
+  dest->dims = calloc(dest->ndims, sizeof(nct_dim));
+  dest->vars = calloc(dest->nvars, sizeof(nct_var));
   dest->dimnames = calloc(dest->ndims, sizeof(char*));
   dest->varnames = calloc(dest->nvars, sizeof(char*));
   dest->dimlens = calloc(dest->ndims, sizeof(size_t));
-  for(int i=0; i<dest->ndims; i++) //read dimensionss
-    read_ncdim(ncid, i, dest->dims+i);
-  for(int i=0; i<dest->nvars; i++) //read variables
-    read_ncvariable(ncid, i, dest->dims, dest->vars+i);
+  for(int i=0; i<dest->ndims; i++) //read dimss
+    read_nct_dim(ncid, i, dest->dims+i);
+  for(int i=0; i<dest->nvars; i++) //read nct_vars
+    read_nct_var(ncid, i, dest->dims, dest->vars+i);
   NCFUNK(nc_close, ncid);
   link_dims_to_coords(dest);
   /*link names and write lengths*/
@@ -207,7 +207,7 @@ variable_set* read_ncfile(const char* restrict filename, variable_set* dest) {
   return dest;
 }
 
-void link_dims_to_coords(variable_set* dest) {
+void link_dims_to_coords(nct_vset* dest) {
   for(int i=0; i<dest->ndims; i++)
     for(int j=0; j<dest->nvars; j++)
       if(!strcmp(dest->dims[i].name, dest->vars[j].name)) {
@@ -217,27 +217,27 @@ void link_dims_to_coords(variable_set* dest) {
       }
 }
 
-void link_variables_to_dimnames(variable_set* vs) {
+void link_nct_vars_to_dimnames(nct_vset* vs) {
   for(int v=0; v<vs->nvars; v++) {
-    variable* var = vs->vars+v;
+    nct_var* var = vs->vars+v;
     for(int d=0; d<var->ndims; d++)
       var->dimnames[d] = vs->dims[var->dimids[d]].name;
   }
 }
 
-/*does not copy the variable that src may point to*/
-dimension* dimcpy(dimension* dest, const dimension* src) {
+/*does not copy the nct_var that src may point to*/
+nct_dim* nct_dimcpy(nct_dim* dest, const nct_dim* src) {
   if(!dest)
-    dest = malloc(sizeof(dimension));
+    dest = malloc(sizeof(nct_dim));
   *dest = *src;
   dest->name = strdup(src->name);
   return dest;
 }
 
-/*does not change which dimension names are pointed to*/
-variable* varcpy(variable* dest, const variable* src) {
+/*does not change which nct_dim names are pointed to*/
+nct_var* nct_varcpy(nct_var* dest, const nct_var* src) {
   if(!dest)
-    dest = malloc(sizeof(variable));
+    dest = malloc(sizeof(nct_var));
   *dest = *src;
   dest->name = strdup(src->name);
   size_t len = src->ndims * (sizeof(char*) + sizeof(size_t) + sizeof(int));
@@ -254,38 +254,38 @@ variable* varcpy(variable* dest, const variable* src) {
   return dest;
 }
 
-variable_set* vsetcpy(variable_set* dest, const variable_set* src) {
+nct_vset* nct_vsetcpy(nct_vset* dest, const nct_vset* src) {
   if(!dest)
-    dest = malloc(sizeof(variable_set));
+    dest = malloc(sizeof(nct_vset));
   /*dims*/
   dest->ndims = src->ndims;
-  dest->dims = malloc(dest->ndims*sizeof(dimension));
+  dest->dims = malloc(dest->ndims*sizeof(nct_dim));
   dest->dimnames = malloc(dest->ndims*sizeof(char*));
   for(int i=0; i<dest->ndims; i++) {
-    dimcpy(dest->dims+i, src->dims+i);
+    nct_dimcpy(dest->dims+i, src->dims+i);
     dest->dimnames[i] = dest->dims[i].name;
   }
   dest->dimlens = malloc(dest->ndims*sizeof(size_t));
   memcpy(dest->dimlens, src->dimlens, dest->ndims*sizeof(size_t));
   /*vars*/
   dest->nvars = src->nvars;
-  dest->vars = malloc(dest->nvars*sizeof(variable));
+  dest->vars = malloc(dest->nvars*sizeof(nct_var));
   dest->varnames = malloc(dest->nvars*sizeof(char*));
   for(int i=0; i<dest->nvars; i++) {
-    varcpy(dest->vars+i, src->vars+i);
+    nct_varcpy(dest->vars+i, src->vars+i);
     dest->varnames[i] = dest->vars[i].name;
   }
   link_dims_to_coords(dest);
-  link_variables_to_dimnames(dest);
+  link_nct_vars_to_dimnames(dest);
   return dest;
 }
 
-void free_dimension(dimension* dim) {
+void free_nct_dim(nct_dim* dim) {
   free(dim->name);
   dim->name = NULL;
 }
 
-void free_variable(variable* var) {
+void free_nct_var(nct_var* var) {
   free(var->dimnames);
   if(var->xtype == NC_STRING)
     for(int i=0; i<var->len; i++)
@@ -294,11 +294,11 @@ void free_variable(variable* var) {
   free(var->name); var->name = NULL;
 }
 
-void free_variable_set(variable_set* vs) {
+void free_nct_vset(nct_vset* vs) {
   for(int i=0; i<vs->ndims; i++)
-    free_dimension(vs->dims+i);
+    free_nct_dim(vs->dims+i);
   for(int i=0; i<vs->nvars; i++)
-    free_variable(vs->vars+i);
+    free_nct_var(vs->vars+i);
   free(vs->dims);
   free(vs->vars);
   free(vs->dimnames);
