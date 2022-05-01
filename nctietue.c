@@ -87,9 +87,9 @@ nct_var* var_from_vset(nct_vset* vs, char* name) {
  *––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––*/
 
 #define OPERATION(nctype, form, ctype, opername, oper)			\
-  nct_var* varvar_##opername##_##nctype(nct_var* v0, nct_var* v1) {	\
+  nct_var* vararr_##opername##_##nctype(nct_var* v0, void* arr) {	\
     for(size_t i=0; i<v0->len; i++)					\
-      ((ctype*)v0->data)[i] oper ((ctype*)v1->data)[i];			\
+      ((ctype*)v0->data)[i] oper ((ctype*)arr)[i];			\
     return v0;								\
   }
 #include "operations_and_types.h"
@@ -97,19 +97,19 @@ nct_var* var_from_vset(nct_vset* vs, char* name) {
 
 /*Define arrays of the functions. NC_STRING has greatest index.
   A separate init-function is needed to put function pointers into the arrays.*/
-#define ONE_OPERATION(opername, a) nct_var* (*varvar_##opername##_functions[NC_STRING])(nct_var* v0, nct_var* v1);
+#define ONE_OPERATION(opername, a) nct_var* (*vararr_##opername##_functions[NC_STRING])(nct_var* v0, void* arr);
 ALL_OPERATIONS
 #undef ONE_OPERATION
 
 #define ONE_OPERATION(opername, oper)				\
-  nct_var* varvar_##opername(nct_var* v0, nct_var* v1) {	\
-    return varvar_##opername##_functions[v0->xtype](v0, v1);	\
+  nct_var* vararr_##opername(nct_var* v0, void* arr) {		\
+    return vararr_##opername##_functions[v0->xtype](v0, arr);	\
   }
 ALL_OPERATIONS
 #undef ONE_OPERATION
 
 #define ONE_OPERATION(opername, oper)			\
-  nct_var* varvars_##opername(nct_var* var, ...) {	\
+  nct_var* vararrs_##opername(nct_var* var, ...) {	\
   va_list ptr;						\
   int va_len = 4;					\
   int i=0;						\
@@ -118,10 +118,10 @@ ALL_OPERATIONS
     for(int _i=0; _i<i; _i++)				\
       va_arg(ptr, void*);				\
     for(; i<va_len; i++) {				\
-      nct_var* v1 = va_arg(ptr, void*);		\
+      void* v1 = va_arg(ptr, void*);			\
       if(!v1)						\
 	goto FINISHED;					\
-      varvar_##opername(var, v1);			\
+      vararr_##opername(var, v1);			\
     }							\
     va_end(ptr);					\
     va_len *= 2;					\
@@ -133,7 +133,7 @@ FINISHED:						\
 ALL_OPERATIONS
 #undef ONE_OPERATION
 
-#define OPERATION(nctype, a, b, opername, c) varvar_##opername##_functions[nctype] = varvar_##opername##_##nctype;
+#define OPERATION(nctype, a, b, opername, c) vararr_##opername##_functions[nctype] = vararr_##opername##_##nctype;
 void nct_init() {
 #include "operations_and_types.h"
 }

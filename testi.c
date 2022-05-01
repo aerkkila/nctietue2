@@ -9,13 +9,14 @@ int main(int argc, char** argv) {
   free_nct_var(lat->coord);
   free_nct_dim(lat);
   free(lat);
+
   nct_init();
   nct_vset* vs = read_ncfile("../koodit/köppen.nc", NULL);
   print_nct_vset(vs);
   putchar('\n');
   nct_vset* uusi = nct_vsetcpy(NULL, vs);
   vs->vars[3].name[2] = '9';
-  varvar_pluseq(var_from_vset(vs, "lat"), var_from_vset(vs, "lon"));
+  vararr_pluseq(var_from_vset(vs, "lat"), var_from_vset(vs, "lon")->data);
   putchar('\n');
   print_nct_vset(uusi);
   putchar('\n');

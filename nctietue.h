@@ -72,13 +72,13 @@ void print_nct_var_data(nct_var*);
 void print_nct_var(nct_var* var, const char* indent);
 void print_nct_vset(nct_vset* vs);
 nct_var* var_from_vset(nct_vset* vs, char* name);
-#define OPERATION(nctype, a, b, opername, c) nct_var* varvar_##opername##_##nctype(nct_var*, nct_var*);
+#define OPERATION(nctype, a, ctype, opername, b) nct_var* vararr_##opername##_##nctype(nct_var*, void*);
 #include "operations_and_types.h"
 #undef OPERATION
-#define ONE_OPERATION(opername, a) nct_var* varvar_##opername(nct_var*, nct_var*);
+#define ONE_OPERATION(opername, a) nct_var* vararr_##opername(nct_var*, void*);
 ALL_OPERATIONS
 #undef ONE_OPERATION
-#define ONE_OPERATION(opername, a) nct_var* varvars_##opername(nct_var*, ...);
+#define ONE_OPERATION(opername, a) nct_var* vararrs_##opername(nct_var*, ...);
 ALL_OPERATIONS
 #undef ONE_OPERATION
 void nct_init();
