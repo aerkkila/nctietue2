@@ -1,0 +1,55 @@
+\documentclass{scrartcl}
+\usepackage[finnish]{babel}
+\usepackage{minted}
+\newmintinline{c}{breaklines}
+
+\title{Nctietue}
+
+\begin{document}
+\maketitle
+
+\section{Periaatteet}
+Määritellyt tietueet ovat nimeltään \cinline/nct_var; nct_dim; nct_vset/.
+
+Jos funktio operoi vain yhden tyyppiseen muuttujaan, tyypin nimi esiintyy funkion nimessä sellaisenaan:
+\begin{minted}{c}
+  void free_nct_dim(nct_dim*);
+  nct_vset* nct_vsetcpy(nct_vset*);
+\end{minted}
+Jos tyyppejä on useampi, funktion nimessä jätetään pois nct\_-etuliite:
+\begin{minted}{c}
+  nct_var* vararr_pluseq(nct_var*, void*);
+\end{minted}
+
+Lisäksi funktioitten nimissä käytetään muuttujan tyypin tapaan nimeä \cinline/nct_coord/.
+Jos funktion nimessä on nct\_dim, muuttujaa käsitellään unohtaen sillä oleva coordv-niminen osoitin nct\_var-muuttujaan.
+Nct\_coord tarkoittaa nct\_dim muuttujaa, mutta funktio huomioi coordv-jäsenen ja olettaa sen viittaavan muuttujaan (ei NULL).
+
+\section{Muistinhallinta}
+Funktion nimestä käy aina ilmi, jos dataa kopioidaan.
+Poikkeus on nc\_coord-tyypin funktiot, joissa nimi kopioidaan alla alevaan muuttujaan.
+Vapauttaminen vapauttaa kaiken osoittimen viittaaman, mutta ei itse osoitinta.
+Alustusfunktioitten ensimmäinen argumentti on aina \cinline/dest_type* dest/.
+Sen ollessa NULL alustetaan uutta muistia.
+Muuten alustettava asia sijoitetaan dest-osoittimen viittaamaan muistiin.
+
+Tässä muistinhallinta on oikein:
+\begin{minted}{c}
+  int *xdata = calloc(5,sizeof(int));
+  nct_dim* x = to_nct_coord(NULL, xdata, 5, NC_INT, strdup("x"));
+  free_nct_coord(x);
+  free(x); //vapautusfunktio ei vapauta itse osoitinta
+\end{minted}
+Nimi vapautetaan vapautusfunktiossa, jonka vuoksi käytettin strdup-funktiota.
+Jos tietueeseen laitetaan pinomuistia, se täytyy piilottaa ennen vapautusfunktion kutsumista.
+Tässäkin muistinhallinta on oikein:
+\begin{minted}{c}
+  int xdata[] = {1,4,9,16,25};
+  nct_dim x = {0};
+  to_nct_coord(&x, xdata, 5, NC_INT, "x");
+  x.name = NULL; //muuten tämä yritettäisiin vapauttaa free()-funktiolla
+  x.coordv->data = NULL; //muuten tämä yritettäisiin vapauttaa free()-funktiolla
+  free_nct_coord(&x);
+\end{minted}
+
+\end{document}

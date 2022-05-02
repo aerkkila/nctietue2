@@ -16,7 +16,7 @@ typedef struct {
 typedef struct {
   char* name;
   size_t len;
-  nct_var* coord;
+  nct_var* coordv;
 } nct_dim;
 
 typedef struct {
@@ -88,12 +88,14 @@ nct_vset* read_ncfile(const char* restrict filename, nct_vset* dest);
 void link_nct_vars_to_dimnames(nct_vset* vs);
 void link_dims_to_coords(nct_vset* dest);
 nct_dim* nct_dimcpy(nct_dim* dest, const nct_dim* src);
+nct_dim* nct_coordcpy(nct_dim* dest, const nct_dim* src);
 nct_var* nct_varcpy(nct_var* dest, const nct_var* src);
 nct_vset* nct_vsetcpy(nct_vset* dest, const nct_vset* src);
 void free_nct_dim(nct_dim*);
 void free_nct_var(nct_var*);
+void free_nct_coord(nct_dim*);
 void free_nct_vset(nct_vset*);
-nct_var* to_nct_var(void* arr, nct_var* dest, size_t len, nc_type xtype, char* name);
-nct_var* copy_to_nct_var(void* arr, nct_var* dest, size_t len, nc_type xtype, char* name);
-nct_dim* to_nct_coord(void* arr, size_t len, nc_type xtype, char* name);
+nct_var* to_nct_var(nct_var* dest, void* arr, size_t len, nc_type xtype, char* name);
+nct_var* copy_to_nct_var(nct_var* dest, void* arr, size_t len, nc_type xtype, char* name);
+nct_dim* to_nct_coord(nct_dim* dest, void* arr, size_t len, nc_type xtype, char* name);
 #endif
