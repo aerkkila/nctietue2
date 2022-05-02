@@ -332,7 +332,7 @@ nct_var* copy_to_nct_var(void* arr, nct_var* dest, size_t len, nc_type xtype, ch
 nct_dim* to_nct_coord(void* arr, size_t len, nc_type xtype, char* name) {
   nct_dim* destd = calloc(1, sizeof(nct_dim));
   nct_var* destv = calloc(1, sizeof(nct_var));
-  destd->name = strdup(name);
+  destd->name = name;
   destd->len = len;
   destd->coord = destv;
 

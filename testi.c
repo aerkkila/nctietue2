@@ -8,6 +8,7 @@ int main(int argc, char** argv) {
   print_nct_var(lat->coord, "");
   free_nct_var(lat->coord);
   free_nct_dim(lat);
+  free(lat->coord);
   free(lat);
 
   nct_init();
