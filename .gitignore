@@ -1,5 +1,5 @@
 *.out
-_minted-doc/
+_minted-*
 *.aux
 *.log
 *.pdf

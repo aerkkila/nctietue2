@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include "nctietue.h"
 
 const char* error_color   = "\033[1;31m";
@@ -143,22 +144,21 @@ void nct_init() {
  * Reading and writing data
  *––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––*/
 
-nct_dim* read_nct_dim(int ncid, int dimid, nct_dim* dest) {
+nct_dim* read_nct_dim_gd(nct_dim* dest, int ncid, int dimid) {
   char name[256];
-  if(!dest)
-    dest = calloc(1, sizeof(nct_dim));
   size_t* len_p = &dest->len;
   nc_inq_dim(ncid, dimid, name, len_p);
   dest->name = strdup(name);
   return dest;
 }
+nct_dim* read_nct_dim(int ncid, int dimid) {
+  return read_nct_dim_gd(calloc(1, sizeof(nct_dim)), ncid, dimid);
+}
 
-nct_var* read_nct_var(int ncid, int varid, nct_dim* dims, nct_var* dest) {
+nct_var* read_nct_var_gd(nct_var* dest, int ncid, int varid, nct_dim* dims) {
   int ndims, dimids[128];
   nc_type xtype;
   char name[256];
-  if(!dest)
-    dest = calloc(1, sizeof(nct_var));
   NCFUNK(nc_inq_var, ncid, varid, name, &xtype, &ndims, dimids, NULL);
   dest->name = strdup(name);
   dest->ndims = ndims;
@@ -178,11 +178,12 @@ nct_var* read_nct_var(int ncid, int varid, nct_dim* dims, nct_var* dest) {
   NCFUNK(nc_get_var, ncid, varid, dest->data);
   return dest;
 }
+nct_var* read_nct_var(int ncid, int varid, nct_dim* dims) {
+  return read_nct_var_gd(calloc(1,sizeof(nct_var)), ncid, varid, dims);
+}
 
-nct_vset* read_ncfile(const char* restrict filename, nct_vset* dest) {
+nct_vset* read_ncfile_gd(nct_vset* dest, const char* restrict filename) {
   int ncid, id;
-  if(!dest)
-    dest = calloc(1, sizeof(nct_vset));
   NCFUNK(nc_open, filename, NC_NOWRITE, &ncid);
   NCFUNK(nc_inq_ndims, ncid, &(dest->ndims));
   NCFUNK(nc_inq_nvars, ncid, &(dest->nvars));
@@ -191,10 +192,10 @@ nct_vset* read_ncfile(const char* restrict filename, nct_vset* dest) {
   dest->dimnames = calloc(dest->ndims, sizeof(char*));
   dest->varnames = calloc(dest->nvars, sizeof(char*));
   dest->dimlens = calloc(dest->ndims, sizeof(size_t));
-  for(int i=0; i<dest->ndims; i++) //read dimss
-    read_nct_dim(ncid, i, dest->dims+i);
+  for(int i=0; i<dest->ndims; i++) //read dims
+    read_nct_dim_gd(dest->dims+i, ncid, i);
   for(int i=0; i<dest->nvars; i++) //read nct_vars
-    read_nct_var(ncid, i, dest->dims, dest->vars+i);
+    read_nct_var_gd(dest->vars+i, ncid, i, dest->dims);
   NCFUNK(nc_close, ncid);
   link_dims_to_coords(dest);
   /*link names and write lengths*/
@@ -205,6 +206,9 @@ nct_vset* read_ncfile(const char* restrict filename, nct_vset* dest) {
   for(int i=0; i<dest->nvars; i++)
     dest->varnames[i] = dest->vars[i].name;
   return dest;
+}
+nct_vset* read_ncfile(const char* restrict filename) {
+  return read_ncfile_gd(calloc(1,sizeof(nct_vset)), filename);
 }
 
 void link_dims_to_coords(nct_vset* dest) {
@@ -226,26 +230,30 @@ void link_nct_vars_to_dimnames(nct_vset* vs) {
 }
 
 /*does not copy the nct_var that src may point to*/
-nct_dim* nct_dimcpy(nct_dim* dest, const nct_dim* src) {
-  if(!dest)
-    dest = malloc(sizeof(nct_dim));
+nct_dim* nct_dimcpy_gd(nct_dim* dest, const nct_dim* src) {
   dest->name = strdup(src->name);
   dest->len = src->len;
   //don't change dest->coordv
   return dest;
 }
+nct_dim* nct_dimcpy(const nct_dim* src) {
+  nct_dim* dest = calloc(1, sizeof(nct_dim));
+  return nct_dimcpy_gd(dest, src);
+}
 
 /*copies the dim and the var that src points to*/
-nct_dim* nct_coordcpy(nct_dim* dest, const nct_dim* src) {
-  dest = nct_dimcpy(dest, src);
-  dest->coordv = nct_varcpy(dest->coordv,  src->coordv);
+nct_dim* nct_coordcpy_gd(nct_dim* dest, const nct_dim* src) {
+  nct_dimcpy_gd(dest, src);
+  dest->coordv = nct_varcpy(src->coordv);
   return dest;
+}
+nct_dim* nct_coordcpy(const nct_dim* src) {
+  nct_dim* dest = malloc(sizeof(nct_dim));
+  return nct_coordcpy_gd(dest, src);
 }
 
 /*does not change which nct_dim names are pointed to*/
-nct_var* nct_varcpy(nct_var* dest, const nct_var* src) {
-  if(!dest)
-    dest = malloc(sizeof(nct_var));
+nct_var* nct_varcpy_gd(nct_var* dest, const nct_var* src) {
   *dest = *src;
   dest->name = strdup(src->name);
   size_t len = src->ndims * (sizeof(char*) + sizeof(size_t) + sizeof(int));
@@ -261,16 +269,18 @@ nct_var* nct_varcpy(nct_var* dest, const nct_var* src) {
     memcpy(dest->data, src->data, src->len*src->size1);
   return dest;
 }
+nct_var* nct_varcpy(const nct_var* src) {
+  nct_var* dest = malloc(sizeof(nct_var));
+  return nct_varcpy_gd(dest, src);
+}
 
-nct_vset* nct_vsetcpy(nct_vset* dest, const nct_vset* src) {
-  if(!dest)
-    dest = malloc(sizeof(nct_vset));
+nct_vset* nct_vsetcpy_gd(nct_vset* dest, const nct_vset* src) {
   /*dims*/
   dest->ndims = src->ndims;
   dest->dims = malloc(dest->ndims*sizeof(nct_dim));
   dest->dimnames = malloc(dest->ndims*sizeof(char*));
   for(int i=0; i<dest->ndims; i++) {
-    nct_dimcpy(dest->dims+i, src->dims+i);
+    nct_dimcpy_gd(dest->dims+i, src->dims+i);
     dest->dimnames[i] = dest->dims[i].name;
   }
   dest->dimlens = malloc(dest->ndims*sizeof(size_t));
@@ -280,12 +290,16 @@ nct_vset* nct_vsetcpy(nct_vset* dest, const nct_vset* src) {
   dest->vars = malloc(dest->nvars*sizeof(nct_var));
   dest->varnames = malloc(dest->nvars*sizeof(char*));
   for(int i=0; i<dest->nvars; i++) {
-    nct_varcpy(dest->vars+i, src->vars+i);
+    nct_varcpy_gd(dest->vars+i, src->vars+i);
     dest->varnames[i] = dest->vars[i].name;
   }
   link_dims_to_coords(dest);
   link_nct_vars_to_dimnames(dest);
   return dest;
+}
+nct_vset* nct_vsetcpy(const nct_vset* src) {
+  nct_vset* dest = malloc(sizeof(nct_vset));
+  return nct_vsetcpy_gd(dest, src);
 }
 
 void free_nct_dim(nct_dim* dim) {
@@ -303,6 +317,7 @@ void free_nct_var(nct_var* var) {
 }
 
 void free_nct_coord(nct_dim* coord) {
+  *(intptr_t*)(&coord->coordv->name) *= coord->coordv->name!=coord->name; //branchlessly: if(equal) other=NULL
   free_nct_dim(coord);
   free_nct_var(coord->coordv);
   free(coord->coordv);
@@ -320,9 +335,7 @@ void free_nct_vset(nct_vset* vs) {
   free(vs->dimlens);
 }
 
-nct_var* to_nct_var(nct_var* dest, void* arr, size_t len, nc_type xtype, char* name) {
-  if(!dest)
-    dest = calloc(1, sizeof(nct_var));
+nct_var* to_nct_var_gd(nct_var* dest, void* arr, size_t len, nc_type xtype, char* name) {
   dest->name = name;
   dest->len = len;
   dest->size1 = nctypelen(xtype);
@@ -330,10 +343,12 @@ nct_var* to_nct_var(nct_var* dest, void* arr, size_t len, nc_type xtype, char* n
   dest->data = arr;
   return dest;
 }
+nct_var* to_nct_var(void* arr, size_t len, nc_type xtype, char* name) {
+    nct_var* dest = calloc(1, sizeof(nct_var));
+    return to_nct_var_gd(dest, arr, len, xtype, name);
+}
 
-nct_var* copy_to_nct_var(nct_var* dest, void* arr, size_t len, nc_type xtype, char* name) {
-  if(!dest)
-    dest = calloc(1, sizeof(nct_var));
+nct_var* copy_to_nct_var_gd(nct_var* dest, void* arr, size_t len, nc_type xtype, char* name) {
   dest->name = name;
   dest->len = len;
   dest->size1 = nctypelen(xtype);
@@ -342,18 +357,17 @@ nct_var* copy_to_nct_var(nct_var* dest, void* arr, size_t len, nc_type xtype, ch
   memcpy(dest->data, arr, len*dest->size1);
   return dest;
 }
+nct_var* copy_to_nct_var(void* arr, size_t len, nc_type xtype, char* name) {
+  nct_var* dest = calloc(1, sizeof(nct_var));
+  return copy_to_nct_var_gd(dest, arr, len, xtype, name);
+}
 
-nct_dim* to_nct_coord(nct_dim* dest, void* arr, size_t len, nc_type xtype, char* name) {
-  if(!dest) {
-    dest = calloc(1, sizeof(nct_dim));
-    dest->coordv = calloc(1, sizeof(nct_var));
-  } else if(!dest->coordv)
-    dest->coordv = calloc(1, sizeof(nct_var));
+nct_dim* to_nct_coord_gd(nct_dim* dest, void* arr, size_t len, nc_type xtype, char* name) {
+  dest->coordv = calloc(1, sizeof(nct_var));
   dest->name = name;
   dest->len = len;
   nct_var* destv = dest->coordv;
-
-  destv->name = strdup(name);
+  destv->name = name;
   destv->iscoordinate = 1;
   destv->ndims = 1;
   destv->dimnames = malloc(sizeof(char*)+sizeof(size_t)+sizeof(int));
@@ -367,4 +381,8 @@ nct_dim* to_nct_coord(nct_dim* dest, void* arr, size_t len, nc_type xtype, char*
   destv->xtype = xtype;
   destv->data = arr;
   return dest;
+}
+nct_dim* to_nct_coord(void* arr, size_t len, nc_type xtype, char* name) {
+  nct_dim* dest = calloc(1, sizeof(nct_dim));
+  to_nct_coord_gd(dest, arr, len, xtype, name);
 }

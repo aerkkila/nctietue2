@@ -1,0 +1,69 @@
+\documentclass{scrartcl}
+\usepackage[finnish]{babel}
+\usepackage{minted}
+\newmintinline{c}{breaklines}
+
+\title{Nctietue}
+
+\begin{document}
+\maketitle
+
+\section{Periaatteet}
+Määritellyt tietueet ovat nimeltään \cinline/nct_var; nct_dim; nct_vset/.
+
+Jos funktio operoi vain yhden tyyppiseen muuttujaan, tyypin nimi esiintyy funkion nimessä sellaisenaan:
+\begin{minted}{c}
+  void free_nct_dim(nct_dim*);
+  nct_vset* nct_vsetcpy(nct_vset*);
+\end{minted}
+Jos tyyppejä on useampi, funktion nimessä jätetään pois nct\_-etuliite:
+\begin{minted}{c}
+  nct_var* vararr_pluseq(nct_var*, void*);
+\end{minted}
+
+Lisäksi funktioitten nimissä käytetään muuttujan tyypin tapaan nimeä \cinline/nct_coord/.
+Jos funktion nimessä on nct\_dim, muuttujaa käsitellään unohtaen sillä oleva coordv-niminen osoitin nct\_var-muuttujaan.
+Nct\_coord tarkoittaa nct\_dim muuttujaa, mutta funktio huomioi coordv-jäsenen toisin kuin nct\_dim-funktiot.
+
+Muuttujan alustusfunktioista on aina olemassa kaksi versiota, joista toisen päätteenä on \_gd (given destination).
+Gd-funktion ensimmäinen argumentti on viite tietueeseen, johon muuttuja sijoitetaan.
+Gd-päätteetön funktio alustaa muistin luotavalle muuttujalle ja kutsuu sitten gd-funktiota.
+Vain ensimmäinen taso voidaan antaa valmiina.
+Esimerkiksi nct\_coord-tyypin alustaville funktioille voidaan antaa nct\_dim-muuttuja, mutta ei sen osoittamaa nct\_var-muuttujaa.
+\begin{minted}{c}
+  nct_dim* nct_coordcpy_gd(nct_dim* dest, const nct_dim* src) {
+    nct_dimcpy_gd(dest, src);
+    dest->coordv = nct_varcpy(src->coordv);
+    return dest;
+  }
+  nct_dim* nct_coordcpy(const nct_dim* src) {
+    nct_dim* dest = malloc(sizeof(nct_dim));
+    return nct_coordcpy_gd(dest, src);
+  }
+\end{minted}
+
+\section{Muistinhallinta}
+Funktion nimestä käy aina ilmi, jos dataa kopioidaan.
+Vapauttaminen vapauttaa kaiken osoittimen viittaaman, mutta ei itse osoitinta.
+
+Koordinaatin alustus ja vapautus tapahtuu kasamuistia käyttäen näin:
+\begin{minted}{c}
+  int *xdata = calloc(5,sizeof(int));
+  nct_dim* x = to_nct_coord(xdata, 5, NC_INT, strdup("x"));
+  free_nct_coord(x);
+  free(x);
+\end{minted}
+Jos tietueeseen laitetaan pinomuistia, se täytyy poistaa tietueesta ennen vapautusfunktion kutsumista.
+Koordinaatin alustus ja vapautus tapahtuu pinomuistia käyttäen näin:
+\begin{minted}{c}
+  int xdata[5] = {0};
+  nct_dim x = {0};
+  to_nct_coord_gd(&x, xdata, 5, NC_INT, "x");
+  /*poistetaan viitteet pinomuistiin ennen vapautusfunktion kutsumista*/
+  x.name = NULL;
+  x.coordv->name = NULL;
+  x.coordv->data = NULL;
+  free_nct_coord(&x);
+\end{minted}
+
+\end{document}
