@@ -221,6 +221,19 @@ void link_dims_to_coords(nct_vset* dest) {
       }
 }
 
+void nct_write_ncfile(const char* name, const nct_vset* src) {
+  int ncid, id;
+  NCFUNK(nc_open, name, NC_NETCDF4|NC_CLOBBER, &ncid);
+  for(int i=0; i<src->ndims; i++)
+    NCFUNK(nc_def_dim, ncid, src->dimnames[i], src->dimlens[i], &id);
+  for(int i=0; i<src->nvars; i++) {
+    nct_var* v = src->vars+i;
+    NCFUNK(nc_def_var, ncid, src->varnames[i], v->xtype, v->ndims, v->dimids, &id);
+    NCFUNK(nc_put_var, ncid, id, v->data);
+  }
+  NCFUNK(nc_close, ncid);
+}
+
 void link_nct_vars_to_dimnames(nct_vset* vs) {
   for(int v=0; v<vs->nvars; v++) {
     nct_var* var = vs->vars+v;
@@ -386,3 +399,4 @@ nct_dim* to_nct_coord(void* arr, size_t len, nc_type xtype, char* name) {
   nct_dim* dest = calloc(1, sizeof(nct_dim));
   to_nct_coord_gd(dest, arr, len, xtype, name);
 }
+

@@ -88,6 +88,7 @@ nct_var* read_nct_var_gd(nct_var* dest, int ncid, int varid, nct_dim* dims);
 nct_var* read_nct_var(int ncid, int varid, nct_dim* dims);
 nct_vset* read_ncfile_gd(nct_vset* dest, const char* restrict filename);
 nct_vset* read_ncfile(const char* restrict filename);
+void nct_write_ncfile(const char* name, const nct_vset* src);
 void link_nct_vars_to_dimnames(nct_vset* vs);
 void link_dims_to_coords(nct_vset* dest);
 nct_dim* nct_dimcpy_gd(nct_dim* dest, const nct_dim* src);
