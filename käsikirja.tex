@@ -8,19 +8,11 @@
 \begin{document}
 \maketitle
 
-\section{Periaatteet}
+\section{Yleistä}
 Määritellyt tietueet ovat nimeltään \cinline/nct_var; nct_dim; nct_vset/.
-
-Jos funktio operoi vain yhden tyyppiseen muuttujaan, tyypin nimi esiintyy funkion nimessä sellaisenaan:
-\begin{minted}{c}
-  void free_nct_dim(nct_dim*);
-  nct_vset* nct_vsetcpy(nct_vset*);
-\end{minted}
-Jos tyyppejä on useampi, funktion nimessä jätetään pois nct\_-etuliite:
-\begin{minted}{c}
-  nct_var* vararr_pluseq(nct_var*, void*);
-\end{minted}
-
+Funktioitten nimet alkavat aina etuliitteellä "nct\_"
+Etuliite "nct\_" esiintyy funktion nimessä vain kerran alussa.
+Esimerkiksi nct\_var on alun jälkeen vain var.
 Lisäksi funktioitten nimissä käytetään muuttujan tyypin tapaan nimeä \cinline/nct_coord/.
 Jos funktion nimessä on nct\_dim, muuttujaa käsitellään unohtaen sillä oleva coordv-niminen osoitin nct\_var-muuttujaan.
 Nct\_coord tarkoittaa nct\_dim muuttujaa, mutta funktio huomioi coordv-jäsenen toisin kuin nct\_dim-funktiot.
@@ -49,7 +41,7 @@ Vapauttaminen vapauttaa kaiken osoittimen viittaaman, mutta ei itse osoitinta.
 Koordinaatin alustus ja vapautus tapahtuu kasamuistia käyttäen näin:
 \begin{minted}{c}
   int *xdata = calloc(5,sizeof(int));
-  nct_dim* x = to_nct_coord(xdata, 5, NC_INT, strdup("x"));
+  nct_dim* x = nct_to_coord(xdata, 5, NC_INT, strdup("x"));
   free_nct_coord(x);
   free(x);
 \end{minted}
@@ -58,7 +50,7 @@ Koordinaatin alustus ja vapautus tapahtuu pinomuistia käyttäen näin:
 \begin{minted}{c}
   int xdata[5] = {0};
   nct_dim x = {0};
-  to_nct_coord_gd(&x, xdata, 5, NC_INT, "x");
+  to_nct_coord_gd(&x, nct_to_coord, 5, NC_INT, "x");
   /*poistetaan viitteet pinomuistiin ennen vapautusfunktion kutsumista*/
   x.name = NULL;
   x.coordv->name = NULL;

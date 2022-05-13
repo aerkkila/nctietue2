@@ -22,11 +22,8 @@ typedef struct {
 typedef struct {
   int ndims;
   nct_dim* dims;
-  char** dimnames; //pointers to names in nct_dim-structs
-  size_t* dimlens;
   int nvars;
   nct_var* vars;
-  char** varnames; //pointers to names in nct_var-structs
 } nct_vset;
 
 /*With this macro one can define functions for all nct_var types without repeating things.
@@ -82,31 +79,41 @@ ALL_OPERATIONS
 ALL_OPERATIONS
 #undef ONE_OPERATION
 void nct_init();
-nct_dim* read_nct_dim_gd(nct_dim* dest, int ncid, int dimid);
-nct_dim* read_nct_dim(int ncid, int dimid);
-nct_var* read_nct_var_gd(nct_var* dest, int ncid, int varid, nct_dim* dims);
-nct_var* read_nct_var(int ncid, int varid, nct_dim* dims);
+
+nct_dim* nct_read_dim_gd(nct_dim* dest, int ncid, int dimid);
+nct_dim* nct_read_dim(int ncid, int dimid);
+nct_dim* nct_dimcpy_gd(nct_dim* dest, const nct_dim* src);
+nct_dim* nct_dimcpy(const nct_dim* src);
+void nct_free_dim(nct_dim*);
+
+nct_dim* nct_coordcpy_gd(nct_dim* dest, const nct_dim* src);
+nct_dim* nct_coordcpy(const nct_dim* src);
+nct_dim* nct_to_coord_gd(nct_dim* dest, void* arr, size_t len, nc_type xtype, char* name);
+nct_dim* nct_to_coord(void* arr, size_t len, nc_type xtype, char* name);
+void nct_free_coord(nct_dim*);
+
+nct_var* nct_read_var_gd(nct_var* dest, int ncid, int varid, nct_dim* dims);
+nct_var* nct_read_var(int ncid, int varid, nct_dim* dims);
+nct_var* nct_varcpy_gd(nct_var* dest, const nct_var* src);
+nct_var* nct_varcpy(const nct_var* src);
+nct_var* nct_to_var_gd(nct_var* dest, void* arr, size_t len, nc_type xtype, char* name);
+nct_var* nct_to_var(void* arr, size_t len, nc_type xtype, char* name);
+nct_var* nct_copy_to_var_gd(nct_var* dest, void* arr, size_t len, nc_type xtype, char* name);
+nct_var* nct_copy_to_var(void* arr, size_t len, nc_type xtype, char* name);
+void nct_free_var(nct_var*);
+
 nct_vset* read_ncfile_gd(nct_vset* dest, const char* restrict filename);
 nct_vset* read_ncfile(const char* restrict filename);
 void nct_write_ncfile(const char* name, const nct_vset* src);
-void link_nct_vars_to_dimnames(nct_vset* vs);
-void link_dims_to_coords(nct_vset* dest);
-nct_dim* nct_dimcpy_gd(nct_dim* dest, const nct_dim* src);
-nct_dim* nct_dimcpy(const nct_dim* src);
-nct_dim* nct_coordcpy_gd(nct_dim* dest, const nct_dim* src);
-nct_dim* nct_coordcpy(const nct_dim* src);
-nct_var* nct_varcpy_gd(nct_var* dest, const nct_var* src);
-nct_var* nct_varcpy(const nct_var* src);
 nct_vset* nct_vsetcpy_gd(nct_vset* dest, const nct_vset* src);
 nct_vset* nct_vsetcpy(const nct_vset* src);
-void free_nct_dim(nct_dim*);
-void free_nct_var(nct_var*);
-void free_nct_coord(nct_dim*);
-void free_nct_vset(nct_vset*);
-nct_var* to_nct_var_gd(nct_var* dest, void* arr, size_t len, nc_type xtype, char* name);
-nct_var* to_nct_var(void* arr, size_t len, nc_type xtype, char* name);
-nct_var* copy_to_nct_var_gd(nct_var* dest, void* arr, size_t len, nc_type xtype, char* name);
-nct_var* copy_to_nct_var(void* arr, size_t len, nc_type xtype, char* name);
-nct_dim* to_nct_coord_gd(nct_dim* dest, void* arr, size_t len, nc_type xtype, char* name);
-nct_dim* to_nct_coord(void* arr, size_t len, nc_type xtype, char* name);
+nct_vset* nct_vset_add_dim(nct_vset*, nct_dim*);
+nct_vset* nct_vset_add_coord(nct_vset*, nct_dim*);
+nct_vset* nct_vset_add_var(nct_vset*, nct_var*);
+void nct_free_vset(nct_vset*);
+void nct_link_vars_to_dimnames(nct_vset* vs);
+void nct_link_dims_to_coords(nct_vset* dest);
+#define ONE_TYPE(nctype,form,ctype) nct_vset* nct_add_coord_range_##nctype(nct_vset* dest, ctype i0, ctype i1, ctype gap);
+ALL_TYPES_EXCEPT_STRING
+#undef ONE_TYPE
 #endif

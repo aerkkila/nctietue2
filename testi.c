@@ -3,13 +3,13 @@
 int main(int argc, char** argv) {
   int xdata[5] = {0};
   nct_dim x = {0};
-  to_nct_coord_gd(&x, xdata, 5, NC_INT, "x");
+  nct_to_coord_gd(&x, xdata, 5, NC_INT, "x");
   print_nct_var(x.coordv, "");
   /*poistetaan viitteet pinomuistiin ennen vapautusfunktion kutsumista*/
   x.name = NULL;
   x.coordv->name = NULL;
   x.coordv->data = NULL;
-  free_nct_coord(&x);
+  nct_free_coord(&x);
 
   return 0;
   nct_init();
@@ -23,8 +23,8 @@ int main(int argc, char** argv) {
   print_nct_vset(uusi);
   putchar('\n');
   print_nct_vset(vs);
-  free_nct_vset(vs);
-  free_nct_vset(uusi);
+  nct_free_vset(vs);
+  nct_free_vset(uusi);
   free(uusi);
   free(vs);
   return 0;
