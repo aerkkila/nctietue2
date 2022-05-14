@@ -24,14 +24,14 @@ int ncret;
 
 /*printfunctions for all nct_var types*/
 #define ONE_TYPE(nctype, form, ctype)			\
-  void print_##nctype(void* arr, int i, int end) {	\
+  void nct_print_##nctype(void* arr, int i, int end) {	\
     for(; i<end; i++)					\
       printf("%"#form", ", ((ctype*)arr)[i]);		\
   }
 ALL_TYPES
 #undef ONE_TYPE
 
-#define ONE_TYPE(nctype, ...) [nctype]=print_##nctype, //array of printfunctions
+#define ONE_TYPE(nctype, ...) [nctype]=nct_print_##nctype, //array of printfunctions
 void (*printfunctions[])(void*, int, int) =
   {
    ALL_TYPES
@@ -45,7 +45,7 @@ char* type_names[] =
   };
 #undef ONE_TYPE
 
-void print_nct_var_data(nct_var* var) {
+void nct_print_var_data(nct_var* var) {
   void (*printfun)(void*,int,int) = printfunctions[var->xtype];
   if(var->len <= 17) {
     printfun(var->data, 0, var->len);
@@ -56,7 +56,7 @@ void print_nct_var_data(nct_var* var) {
   printfun(var->data, var->len-8, var->len);
 }
 
-void print_nct_var(nct_var* var, const char* indent) {
+void nct_print_var(nct_var* var, const char* indent) {
   printf("%s%s%s %s%s(%zu)%s%s:\n%s  %i dims: ( ",
 	 indent, type_color, type_names[var->xtype],
 	 varname_color, var->name, var->len, default_color, var->iscoordinate? " (coordinate)": "",
@@ -65,14 +65,14 @@ void print_nct_var(nct_var* var, const char* indent) {
     printf("%s(%zu), ", var->dimnames[i], var->dimlens[i]);
   printf(")\n");
   printf("%s  [", indent);
-  print_nct_var_data(var);
+  nct_print_var_data(var);
   puts("]");
 }
 
-void print_nct_vset(nct_vset* vs) {
+void nct_print_vset(nct_vset* vs) {
   printf("%s%i nct_vars, %i dims%s\n", varset_color, vs->nvars, vs->ndims, default_color);
   for(int i=0; i<vs->nvars; i++)
-    print_nct_var(vs->vars+i, "  ");
+    nct_print_var(vs->vars+i, "  ");
 }
 
 nct_var* var_from_vset(nct_vset* vs, char* name) {

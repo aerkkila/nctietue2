@@ -62,12 +62,12 @@ typedef struct {
 
 /*All allowed combinations of types (except string) and operations are in "operations_and_types.h"*/
 
-#define ONE_TYPE(nctype, ...) void print_##nctype(void* arr, int i, int end);
+#define ONE_TYPE(nctype, ...) void nct_print_##nctype(void* arr, int i, int end);
 ALL_TYPES
 #undef ONE_TYPE
-void print_nct_var_data(nct_var*);
-void print_nct_var(nct_var* var, const char* indent);
-void print_nct_vset(nct_vset* vs);
+void nct_print_var_data(nct_var*);
+void nct_print_var(nct_var* var, const char* indent);
+void nct_print_vset(nct_vset* vs);
 nct_var* var_from_vset(nct_vset* vs, char* name);
 #define OPERATION(nctype, a, ctype, opername, b) nct_var* vararr_##opername##_##nctype(nct_var*, void*);
 #include "operations_and_types.h"
