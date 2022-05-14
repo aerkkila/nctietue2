@@ -2,6 +2,7 @@
 #define __NC_TIETUE__
 typedef struct {
   char* name;
+  char freeable_name;
   char iscoordinate;
   int ndims;
   char** dimnames; //pointers to names in nct_dim-structs
@@ -15,6 +16,7 @@ typedef struct {
 
 typedef struct {
   char* name;
+  char freeable_name;
   size_t len;
   nct_var* coordv;
 } nct_dim;
@@ -86,11 +88,11 @@ nct_dim* nct_dimcpy_gd(nct_dim* dest, const nct_dim* src);
 nct_dim* nct_dimcpy(const nct_dim* src);
 void nct_free_dim(nct_dim*);
 
-nct_dim* nct_coordcpy_gd(nct_dim* dest, const nct_dim* src);
-nct_dim* nct_coordcpy(const nct_dim* src);
-nct_dim* nct_to_coord_gd(nct_dim* dest, void* arr, size_t len, nc_type xtype, char* name);
-nct_dim* nct_to_coord(void* arr, size_t len, nc_type xtype, char* name);
-void nct_free_coord(nct_dim*);
+//nct_dim* nct_coordcpy_gd(nct_dim* dest, const nct_dim* src);
+//nct_dim* nct_coordcpy(const nct_dim* src);
+//nct_dim* nct_to_coord_gd(nct_dim* dest, void* arr, size_t len, nc_type xtype, char* name);
+//nct_dim* nct_to_coord(void* arr, size_t len, nc_type xtype, char* name);
+//void nct_free_coord(nct_dim*);
 
 nct_var* nct_read_var_gd(nct_var* dest, int ncid, int varid, nct_dim* dims);
 nct_var* nct_read_var(int ncid, int varid, nct_dim* dims);
@@ -102,14 +104,17 @@ nct_var* nct_copy_to_var_gd(nct_var* dest, void* arr, size_t len, nc_type xtype,
 nct_var* nct_copy_to_var(void* arr, size_t len, nc_type xtype, char* name);
 void nct_free_var(nct_var*);
 
-nct_vset* read_ncfile_gd(nct_vset* dest, const char* restrict filename);
-nct_vset* read_ncfile(const char* restrict filename);
+nct_vset* nct_read_ncfile_gd(nct_vset* dest, const char* restrict filename);
+nct_vset* nct_read_ncfile(const char* restrict filename);
 void nct_write_ncfile(const char* name, const nct_vset* src);
 nct_vset* nct_vsetcpy_gd(nct_vset* dest, const nct_vset* src);
 nct_vset* nct_vsetcpy(const nct_vset* src);
-nct_vset* nct_vset_add_dim(nct_vset*, nct_dim*);
-nct_vset* nct_vset_add_coord(nct_vset*, nct_dim*);
-nct_vset* nct_vset_add_var(nct_vset*, nct_var*);
+nct_vset* nct_add_dim(nct_vset*, size_t, char*);
+nct_vset* nct_add_coord(nct_vset*, void*, size_t, nc_type, char*);
+nct_vset* nct_simply_add_var(nct_vset*, void*, nc_type, int, int*, char*);
+nct_vset* nct_add_var_with_dimids(nct_vset*, void*, nc_type, int, int*, char**, size_t*, char*);
+nct_vset* nct_add_var(nct_vset*, void*, nc_type, int, int*, char**, size_t*, char*);
+nct_vset* nct_assign_var(nct_vset*, nct_var*);
 void nct_free_vset(nct_vset*);
 void nct_link_vars_to_dimnames(nct_vset* vs);
 void nct_link_dims_to_coords(nct_vset* dest);

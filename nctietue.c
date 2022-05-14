@@ -70,7 +70,7 @@ void nct_print_var(nct_var* var, const char* indent) {
 }
 
 void nct_print_vset(nct_vset* vs) {
-  printf("%s%i nct_vars, %i dims%s\n", varset_color, vs->nvars, vs->ndims, default_color);
+  printf("%s%i vars, %i dims%s\n", varset_color, vs->nvars, vs->ndims, default_color);
   for(int i=0; i<vs->nvars; i++)
     nct_print_var(vs->vars+i, "  ");
 }
@@ -161,6 +161,7 @@ nct_var* nct_read_var_gd(nct_var* dest, int ncid, int varid, nct_dim* dims) {
   char name[256];
   NCFUNK(nc_inq_var, ncid, varid, name, &xtype, &ndims, dimids, NULL);
   dest->name = strdup(name);
+  dest->freeable_name = 1;
   dest->ndims = ndims;
   dest->dimnames = malloc(ndims * (sizeof(char*) + sizeof(size_t) + sizeof(int)));
   dest->dimlens = (size_t*)(dest->dimnames + ndims);
@@ -235,6 +236,7 @@ void nct_link_vars_to_dimnames(nct_vset* vs) {
 /*does not copy the nct_var that src may point to*/
 nct_dim* nct_dimcpy_gd(nct_dim* dest, const nct_dim* src) {
   dest->name = strdup(src->name);
+  dest->freeable_name = 1;
   dest->len = src->len;
   //don't change dest->coordv
   return dest;
@@ -259,6 +261,7 @@ nct_dim* nct_coordcpy(const nct_dim* src) {
 nct_var* nct_varcpy_gd(nct_var* dest, const nct_var* src) {
   *dest = *src;
   dest->name = strdup(src->name);
+  dest->freeable_name = 1;
   size_t len = src->ndims * (sizeof(char*) + sizeof(size_t) + sizeof(int));
   dest->dimnames = malloc(len);
   dest->dimlens = (size_t*)(dest->dimnames + dest->ndims);
@@ -299,8 +302,9 @@ nct_vset* nct_vsetcpy(const nct_vset* src) {
 }
 
 void nct_free_dim(nct_dim* dim) {
-  free(dim->name);
-  dim->name = NULL;
+  if (dim->freeable_name)
+    free(dim->name);
+  memset(dim, 0, sizeof(nct_dim));
 }
 
 void nct_free_var(nct_var* var) {
@@ -308,8 +312,10 @@ void nct_free_var(nct_var* var) {
   if(var->xtype == NC_STRING)
     for(int i=0; i<var->len; i++)
       free(((char**)var->data)[i]);
-  free(var->data); var->data = NULL;
-  free(var->name); var->name = NULL;
+  free(var->data);
+  if(var->freeable_name)
+    free(var->name);
+  memset(var, 0, sizeof(nct_var));
 }
 
 void nct_free_coord(nct_dim* coord) {
@@ -326,6 +332,7 @@ void nct_free_vset(nct_vset* vs) {
     nct_free_var(vs->vars+i);
   free(vs->dims);
   free(vs->vars);
+  memset(vs, 0, sizeof(nct_vset));
 }
 
 nct_var* nct_to_var_gd(nct_var* dest, void* arr, size_t len, nc_type xtype, char* name) {
@@ -337,8 +344,8 @@ nct_var* nct_to_var_gd(nct_var* dest, void* arr, size_t len, nc_type xtype, char
   return dest;
 }
 nct_var* nct_to_var(void* arr, size_t len, nc_type xtype, char* name) {
-    nct_var* dest = calloc(1, sizeof(nct_var));
-    return nct_to_var_gd(dest, arr, len, xtype, name);
+  nct_var* dest = calloc(1, sizeof(nct_var));
+  return nct_to_var_gd(dest, arr, len, xtype, name);
 }
 
 nct_var* nct_copy_to_var_gd(nct_var* dest, void* arr, size_t len, nc_type xtype, char* name) {
@@ -355,6 +362,7 @@ nct_var* nct_copy_to_var(void* arr, size_t len, nc_type xtype, char* name) {
   return nct_copy_to_var_gd(dest, arr, len, xtype, name);
 }
 
+#if 0
 nct_dim* nct_to_coord_gd(nct_dim* dest, void* arr, size_t len, nc_type xtype, char* name) {
   dest->coordv = calloc(1, sizeof(nct_var));
   dest->name = name;
@@ -379,6 +387,8 @@ nct_dim* nct_to_coord(void* arr, size_t len, nc_type xtype, char* name) {
   nct_dim* dest = calloc(1, sizeof(nct_dim));
   nct_to_coord_gd(dest, arr, len, xtype, name);
 }
+#endif
+
 #define ONE_TYPE(nctype,form,ctype)				\
   ctype* nct_range_##nctype(ctype i0, ctype i1, ctype gap) {	\
     size_t len = (i1-i0)/gap;					\
@@ -391,17 +401,32 @@ nct_dim* nct_to_coord(void* arr, size_t len, nc_type xtype, char* name) {
 ALL_TYPES_EXCEPT_STRING
 #undef ONE_TYPE
 
-nct_vset* nct_assign_dim(nct_vset* vset, int ind, char* name, size_t len) {
+nct_vset* nct_add_dim(nct_vset* vset, size_t len, char* name) {
+  int ind = vset->ndims-1;
   vset->dims[ind].name = name;
-  vset->dims[ind].len  = len;
+  vset->dims[ind].freeable_name = 0;
+  vset->dims[ind].len = len;
   return vset;
 }
 
-nct_vset* nct_simply_assign_var(nct_vset* vset, int varid, void* src, char* name, nc_type xtype,
-				int ndims, int* dimids) {
-  nct_var* var = vset->vars + varid;
+nct_vset* nct_add_coord(nct_vset* vset, void* src, size_t len, nc_type xtype, char* name) {
+  vset->ndims++;
+  vset->dims = realloc(vset->dims, vset->ndims*sizeof(nct_dim));
+  nct_add_dim(vset, len, name);
+
+  vset->nvars++;
+  vset->vars = realloc(vset->vars, vset->nvars*sizeof(nct_var));
+  int dimid = vset->ndims-1;
+  nct_simply_add_var(vset, src, xtype, 1, &dimid, name)->vars[vset->nvars-1].iscoordinate = 1;
+  return vset;
+}
+
+nct_vset* nct_simply_add_var(nct_vset* vset, void* src, nc_type xtype,
+			     int ndims, int* dimids, char* name) {
+  nct_var* var = vset->vars + vset->nvars-1;
   *var = (nct_var) {
     .name = name,
+    .freeable_name = 0,
     .iscoordinate = 0,
     .ndims = ndims,
     .dimnames = malloc(ndims*(sizeof(char*)+sizeof(size_t)+sizeof(int))),
@@ -422,29 +447,25 @@ nct_vset* nct_simply_assign_var(nct_vset* vset, int varid, void* src, char* name
   return vset;
 }
 
-nct_vset* nct_add_var_from_with_dimids(nct_vset* vset, void* src, char* name, nc_type xtype,
-				       int ndims, int* dimids, char** dimnames, size_t* dimlens) {
+nct_vset* nct_add_var_with_dimids(nct_vset* vset, void* src, nc_type xtype,
+				  int ndims, int* dimids, char** dimnames, size_t* dimlens, char* name) {
   int new_dims = 0;
   for(int i=0; i<ndims; i++)
-    if(dimids[i]<0) new_dims++;
+    if(dimids[i]<0) new_dims++; //negative id is new dimension
   if(new_dims) {
-    int new_id = vset->ndims;
-    vset->ndims += new_dims;
-    vset->dims  = realloc(vset->dims, vset->ndims*sizeof(nct_dim));
+    vset->dims = realloc(vset->dims, (vset->ndims+new_dims)*sizeof(nct_dim));
     for(int i=0; i<ndims; i++)
       if(dimids[i]<0) {
-	dimids[i] = new_id;
-	nct_assign_dim(vset, new_id, dimnames[i], dimlens[i]);
-	new_id++;
+	dimids[i] = vset->ndims++;
+	nct_add_dim(vset, dimlens[i], dimnames[i]);
       }
   }
-  vset->nvars++;
-  vset->vars = realloc(vset->vars, vset->nvars*sizeof(nct_var));
-  return nct_simply_assign_var(vset, vset->nvars-1, src, name, xtype, ndims, dimids);
+  vset->vars = realloc(vset->vars, ++vset->nvars*sizeof(nct_var));
+  return nct_simply_add_var(vset, src, xtype, ndims, dimids, name);
 }
 
-nct_vset* nct_add_var_from(nct_vset* vset, void* src, char* name, nc_type xtype,
-			   int ndims, int* dimids, char** dimnames, size_t* dimlens) {
+nct_vset* nct_add_var(nct_vset* vset, void* src, nc_type xtype,
+		      int ndims, int* dimids, char** dimnames, size_t* dimlens, char* name) {
   if(!dimids) {
     int ids[ndims];
     for(int i=0; i<ndims; i++)
@@ -455,18 +476,7 @@ nct_vset* nct_add_var_from(nct_vset* vset, void* src, char* name, nc_type xtype,
 	}
 	ids[i] = -1; //new dim
       }
-    return nct_add_var_from_with_dimids(vset, src, name, xtype, ndims, ids, dimnames, dimlens);
+    return nct_add_var_with_dimids(vset, src, xtype, ndims, ids, dimnames, dimlens, name);
   }
-  return nct_add_var_from_with_dimids(vset, src, name, xtype, ndims, dimids, dimnames, dimlens);
-}
-
-nct_vset* nct_add_coord_from(nct_vset* vset, void* src, size_t len, char* name, nc_type xtype) {
-  vset->ndims++;
-  vset->dims     = realloc(vset->dims,     vset->ndims*sizeof(nct_dim));
-  nct_assign_dim(vset, vset->ndims-1, name, len);
-
-  vset->nvars++;
-  vset->vars     = realloc(vset->vars,     vset->nvars*sizeof(nct_var));
-  int dimid = vset->ndims-1;
-  return nct_simply_assign_var(vset, vset->nvars-1, src, name, xtype, 1, &dimid);
+  return nct_add_var_with_dimids(vset, src, xtype, ndims, dimids, dimnames, dimlens, name);
 }
