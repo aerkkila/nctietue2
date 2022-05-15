@@ -149,6 +149,7 @@ nct_dim* nct_read_dim_gd(nct_dim* dest, int ncid, int dimid) {
   size_t* len_p = &dest->len;
   nc_inq_dim(ncid, dimid, name, len_p);
   dest->name = strdup(name);
+  dest->freeable_name = 1;
   return dest;
 }
 nct_dim* nct_read_dim(int ncid, int dimid) {
@@ -183,7 +184,7 @@ nct_var* nct_read_var(int ncid, int varid, nct_dim* dims) {
   return nct_read_var_gd(calloc(1,sizeof(nct_var)), ncid, varid, dims);
 }
 
-nct_vset* nct_read_file_gd(nct_vset* dest, const char* restrict filename) {
+nct_vset* nct_read_ncfile_gd(nct_vset* dest, const char* restrict filename) {
   int ncid, id;
   NCFUNK(nc_open, filename, NC_NOWRITE, &ncid);
   NCFUNK(nc_inq_ndims, ncid, &(dest->ndims));
@@ -198,8 +199,8 @@ nct_vset* nct_read_file_gd(nct_vset* dest, const char* restrict filename) {
   nct_link_dims_to_coords(dest);
   return dest;
 }
-nct_vset* nct_read_file(const char* restrict filename) {
-  return nct_read_file_gd(calloc(1,sizeof(nct_vset)), filename);
+nct_vset* nct_read_ncfile(const char* restrict filename) {
+  return nct_read_ncfile_gd(calloc(1,sizeof(nct_vset)), filename);
 }
 
 void nct_link_dims_to_coords(nct_vset* dest) {

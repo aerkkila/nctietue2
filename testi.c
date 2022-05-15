@@ -14,14 +14,10 @@ int main(int argc, char** argv) {
   nct_write_ncfile(&vset, "./kuva.nc");
   nct_free_vset(&vset);
 
-  return 0;
-  nct_init();
-  nct_vset* vs = nct_read_ncfile("../koodit/köppen.nc");
-  nct_print_vset(vs);
-  putchar('\n');
+  //nct_init();
+  nct_vset* vs = nct_read_ncfile("./kuva.nc");
   nct_vset* uusi = nct_vsetcpy(vs);
-  vs->vars[3].name[2] = '9';
-  vararr_pluseq(var_from_vset(vs, "lat"), var_from_vset(vs, "lon")->data);
+  vs->vars[2].name[2] = '9';
   putchar('\n');
   nct_print_vset(uusi);
   putchar('\n');
