@@ -44,19 +44,19 @@ nct_vset* nct_open_png_gd(nct_vset* dest, char* name) {
 
   /*Png things end. Nct things begin.*/
 
-  if(height < 1<<16)
-    nct_add_coord(dest, nct_range_NC_USHORT(0,height,1), height, NC_USHORT, "y");
-  else if(height < 1L<<32)
-    nct_add_coord(dest, nct_range_NC_UINT(0,height,1), height, NC_UINT, "y");
-  else
-    nct_add_coord(dest, nct_range_NC_UINT64(0,height,1), height, NC_UINT64, "y");
-
   if(width < 1<<16)
     nct_add_coord(dest, nct_range_NC_USHORT(0,width,1), width, NC_USHORT, "x");
   else if(width < 1L<<32)
     nct_add_coord(dest, nct_range_NC_UINT(0,width,1), width, NC_UINT, "x");
   else
     nct_add_coord(dest, nct_range_NC_UINT64(0,width,1), width, NC_UINT64, "x");
+
+  if(height < 1<<16)
+    nct_add_coord(dest, nct_range_NC_USHORT(0,height,1), height, NC_USHORT, "y");
+  else if(height < 1L<<32)
+    nct_add_coord(dest, nct_range_NC_UINT(0,height,1), height, NC_UINT, "y");
+  else
+    nct_add_coord(dest, nct_range_NC_UINT64(0,height,1), height, NC_UINT64, "y");
 
   int dimids[] = {1,0};
   dest->vars = realloc(dest->vars, ++dest->nvars*sizeof(nct_var));

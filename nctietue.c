@@ -212,9 +212,9 @@ void nct_link_dims_to_coords(nct_vset* dest) {
       }
 }
 
-void nct_write_ncfile(const char* name, const nct_vset* src) {
+void nct_write_ncfile(const nct_vset* src, const char* name) {
   int ncid, id;
-  NCFUNK(nc_open, name, NC_NETCDF4|NC_CLOBBER, &ncid);
+  NCFUNK(nc_create, name, NC_NETCDF4|NC_CLOBBER, &ncid);
   for(int i=0; i<src->ndims; i++)
     NCFUNK(nc_def_dim, ncid, src->dims[i].name, src->dims[i].len, &id);
   for(int i=0; i<src->nvars; i++) {

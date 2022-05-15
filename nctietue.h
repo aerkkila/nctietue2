@@ -106,7 +106,7 @@ void nct_free_var(nct_var*);
 
 nct_vset* nct_read_ncfile_gd(nct_vset* dest, const char* restrict filename);
 nct_vset* nct_read_ncfile(const char* restrict filename);
-void nct_write_ncfile(const char* name, const nct_vset* src);
+void nct_write_ncfile(const nct_vset* src, const char* name);
 nct_vset* nct_vsetcpy_gd(nct_vset* dest, const nct_vset* src);
 nct_vset* nct_vsetcpy(const nct_vset* src);
 nct_vset* nct_add_dim(nct_vset*, size_t, char*);

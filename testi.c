@@ -11,6 +11,7 @@ int main(int argc, char** argv) {
 
   nct_open_png_gd(&vset, "./kuva.png");
   nct_print_vset(&vset);
+  nct_write_ncfile(&vset, "./kuva.nc");
   nct_free_vset(&vset);
 
   return 0;
