@@ -82,6 +82,9 @@ ALL_OPERATIONS
 #undef ONE_OPERATION
 void nct_init();
 
+nct_vset* nct_vset_isel(nct_vset* vset, int dimid, size_t ind0, size_t ind1);
+int nct_vset_get_dimid(nct_vset* vset, char* name);
+
 nct_dim* nct_read_dim_gd(nct_dim* dest, int ncid, int dimid);
 nct_dim* nct_read_dim(int ncid, int dimid);
 nct_dim* nct_dimcpy_gd(nct_dim* dest, const nct_dim* src);

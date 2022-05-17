@@ -140,6 +140,49 @@ void nct_init() {
 }
 #undef OPERATION
 
+static nct_var* _nct_var_isel(nct_var* var, int dimid, size_t ind0, size_t ind1) {
+  int id;
+  for(int i=0; i<var->ndims; i++)
+    if(var->dimids[i] == dimid) {
+      id = i;
+      goto FOUND;
+    }
+  return var;
+ FOUND:
+  size_t len_after = var->size1; //interval to step given coordinate
+  for(int i=id+1; i<var->ndims; i++)
+    len_after *= var->dimlens[i];
+  size_t length_around = len_after * var->dimlens[id];
+  size_t n_blocks = 1;
+  for(int i=0; i<id; i++)
+    n_blocks *= var->dimlens[i];
+  int blocklen = (ind1-ind0) * len_after;
+  void* destp = var->data;
+  void* srcp = var->data + len_after*ind0;
+  for(int i=0; i<n_blocks; i++) {
+    memmove(destp, srcp, blocklen);
+    destp += blocklen;
+    srcp += length_around;
+  }
+  var->data = realloc(var->data, blocklen*n_blocks);
+  var->dimlens[id] = ind1-ind0;
+  var->len = blocklen / var->size1 * n_blocks;
+  return var;
+}
+
+nct_vset* nct_vset_isel(nct_vset* vset, int dimid, size_t ind0, size_t ind1) {
+  for(int i=0; i<vset->nvars; i++)
+    vset->vars[i] = *(_nct_var_isel(vset->vars+i, dimid, ind0, ind1));
+  vset->dims[dimid].len = ind1-ind0;
+}
+
+int nct_vset_get_dimid(nct_vset* vset, char* name) {
+  for(int i=0; i<vset->ndims; i++)
+    if(!strcmp(vset->dims[i].name, name))
+      return i;
+  return -1;
+}
+
 /*–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
  * Reading and writing data
  *––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––*/

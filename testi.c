@@ -18,10 +18,13 @@ int main(int argc, char** argv) {
   nct_vset* vs = nct_read_ncfile("./kuva.nc");
   nct_vset* uusi = nct_vsetcpy(vs);
   vs->vars[2].name[2] = '9';
-  putchar('\n');
+
+  nct_add_coord(uusi, nct_range_NC_UBYTE(0,10,1), 10, NC_UBYTE, "z");
+  nct_vset_isel(uusi, nct_vset_get_dimid(uusi, "y"), 500, 1200);
+  nct_vset_isel(uusi, nct_vset_get_dimid(uusi, "x"), 100, 400);
   nct_print_vset(uusi);
-  putchar('\n');
-  nct_print_vset(vs);
+  nct_write_ncfile(uusi, "./kuva_rajattu.nc");
+
   nct_free_vset(vs);
   nct_free_vset(uusi);
   free(uusi);

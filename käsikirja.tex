@@ -20,42 +20,15 @@ Nct\_coord tarkoittaa nct\_dim muuttujaa, mutta funktio huomioi coordv-jäsenen 
 Muuttujan alustusfunktioista on aina olemassa kaksi versiota, joista toisen päätteenä on \_gd (given destination).
 Gd-funktion ensimmäinen argumentti on viite tietueeseen, johon muuttuja sijoitetaan.
 Gd-päätteetön funktio alustaa muistin luotavalle muuttujalle ja kutsuu sitten gd-funktiota.
-Vain ensimmäinen taso voidaan antaa valmiina.
-Esimerkiksi nct\_coord-tyypin alustaville funktioille voidaan antaa nct\_dim-muuttuja, mutta ei sen osoittamaa nct\_var-muuttujaa.
-\begin{minted}{c}
-  nct_dim* nct_coordcpy_gd(nct_dim* dest, const nct_dim* src) {
-    nct_dimcpy_gd(dest, src);
-    dest->coordv = nct_varcpy(src->coordv);
-    return dest;
-  }
-  nct_dim* nct_coordcpy(const nct_dim* src) {
-    nct_dim* dest = malloc(sizeof(nct_dim));
-    return nct_coordcpy_gd(dest, src);
-  }
-\end{minted}
 
 \section{Muistinhallinta}
 Funktion nimestä käy aina ilmi, jos dataa kopioidaan.
 Vapauttaminen vapauttaa kaiken osoittimen viittaaman, mutta ei itse osoitinta.
+Tietueissa on muuttuja \cinline/freeable_name/, jonka totuusarvo määrittää vapautetaanko tietueen nimi.
 
 Koordinaatin alustus ja vapautus tapahtuu kasamuistia käyttäen näin:
-\begin{minted}{c}
-  int *xdata = calloc(5,sizeof(int));
-  nct_dim* x = nct_to_coord(xdata, 5, NC_INT, strdup("x"));
-  free_nct_coord(x);
-  free(x);
-\end{minted}
 Jos tietueeseen laitetaan pinomuistia, se täytyy poistaa tietueesta ennen vapautusfunktion kutsumista.
 Koordinaatin alustus ja vapautus tapahtuu pinomuistia käyttäen näin:
-\begin{minted}{c}
-  int xdata[5] = {0};
-  nct_dim x = {0};
-  to_nct_coord_gd(&x, nct_to_coord, 5, NC_INT, "x");
-  /*poistetaan viitteet pinomuistiin ennen vapautusfunktion kutsumista*/
-  x.name = NULL;
-  x.coordv->name = NULL;
-  x.coordv->data = NULL;
-  free_nct_coord(&x);
 \end{minted}
 
 \end{document}
