@@ -99,14 +99,14 @@ nct_var* var_from_vset(nct_vset* vs, char* name) {
 /*Define arrays of the functions. NC_STRING has greatest index.
   A separate init-function is needed to put function pointers into the arrays.*/
 #define ONE_OPERATION(opername, a) nct_var* (*vararr_##opername##_functions[NC_STRING])(nct_var* v0, void* arr);
-ALL_OPERATIONS
+ALL_EQ_OPERATIONS
 #undef ONE_OPERATION
 
 #define ONE_OPERATION(opername, oper)				\
   nct_var* vararr_##opername(nct_var* v0, void* arr) {		\
     return vararr_##opername##_functions[v0->xtype](v0, arr);	\
   }
-ALL_OPERATIONS
+ALL_EQ_OPERATIONS
 #undef ONE_OPERATION
 
 #define ONE_OPERATION(opername, oper)			\
@@ -131,7 +131,7 @@ FINISHED:						\
  va_end(ptr);						\
  return var;						\
  }
-ALL_OPERATIONS
+ALL_EQ_OPERATIONS
 #undef ONE_OPERATION
 
 #define OPERATION(nctype, a, b, opername, c) vararr_##opername##_functions[nctype] = vararr_##opername##_##nctype;

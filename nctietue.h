@@ -50,7 +50,7 @@ typedef struct {
   ONE_TYPE(NC_STRING, s, char*)
 
 /*The same thing is done here with operations than with types*/
-#define ALL_OPERATIONS				\
+#define ALL_EQ_OPERATIONS			\
   ONE_OPERATION(pluseq, +=)         		\
   ONE_OPERATION(minuseq, -=)       		\
   ONE_OPERATION(muleq, *=)        		\
@@ -61,6 +61,16 @@ typedef struct {
   ONE_OPERATION(bitxoreq, ^=)      		\
   ONE_OPERATION(bitlshifteq, <<=)		\
   ONE_OPERATION(bitrshifteq, >>=)
+
+#if 0
+#define ALL_CMP_OPERATIONS	\
+  ONE_OPERATION(lt, <)		\
+  ONE_OPERATION(gt, >)		\
+  ONE_OPERATION(le, <=)		\
+  ONE_OPERATION(ge, >=)		\
+  ONE_OPERATION(eq, ==)		\
+  ONE_OPERATION(ne, !=)
+#endif
 
 /*All allowed combinations of types (except string) and operations are in "operations_and_types.h"*/
 
@@ -75,10 +85,10 @@ nct_var* var_from_vset(nct_vset* vs, char* name);
 #include "operations_and_types.h"
 #undef OPERATION
 #define ONE_OPERATION(opername, a) nct_var* vararr_##opername(nct_var*, void*);
-ALL_OPERATIONS
+ALL_EQ_OPERATIONS
 #undef ONE_OPERATION
 #define ONE_OPERATION(opername, a) nct_var* vararrs_##opername(nct_var*, ...);
-ALL_OPERATIONS
+ALL_EQ_OPERATIONS
 #undef ONE_OPERATION
 void nct_init();
 
@@ -90,12 +100,6 @@ nct_dim* nct_read_dim(int ncid, int dimid);
 nct_dim* nct_dimcpy_gd(nct_dim* dest, const nct_dim* src);
 nct_dim* nct_dimcpy(const nct_dim* src);
 void nct_free_dim(nct_dim*);
-
-//nct_dim* nct_coordcpy_gd(nct_dim* dest, const nct_dim* src);
-//nct_dim* nct_coordcpy(const nct_dim* src);
-//nct_dim* nct_to_coord_gd(nct_dim* dest, void* arr, size_t len, nc_type xtype, char* name);
-//nct_dim* nct_to_coord(void* arr, size_t len, nc_type xtype, char* name);
-//void nct_free_coord(nct_dim*);
 
 nct_var* nct_read_var_gd(nct_var* dest, int ncid, int varid, nct_dim* dims);
 nct_var* nct_read_var(int ncid, int varid, nct_dim* dims);
