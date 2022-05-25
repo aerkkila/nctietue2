@@ -148,7 +148,7 @@ static nct_var* _nct_var_isel(nct_var* var, int dimid, size_t ind0, size_t ind1)
       goto FOUND;
     }
   return var;
- FOUND:
+ FOUND:;
   size_t len_after = var->size1; //interval to step given coordinate
   for(int i=id+1; i<var->ndims; i++)
     len_after *= var->dimlens[i];
@@ -179,6 +179,13 @@ nct_vset* nct_vset_isel(nct_vset* vset, int dimid, size_t ind0, size_t ind1) {
 int nct_vset_get_dimid(nct_vset* vset, char* name) {
   for(int i=0; i<vset->ndims; i++)
     if(!strcmp(vset->dims[i].name, name))
+      return i;
+  return -1;
+}
+
+int nct_get_varid(nct_vset* vset, char* name) {
+  for(int i=0; i<vset->nvars; i++)
+    if(!strcmp(vset->vars[i].name, name))
       return i;
   return -1;
 }

@@ -84,6 +84,7 @@ void nct_init();
 
 nct_vset* nct_vset_isel(nct_vset* vset, int dimid, size_t ind0, size_t ind1);
 int nct_vset_get_dimid(nct_vset* vset, char* name);
+int nct_get_varid(nct_vset* vset, char* name);
 
 nct_dim* nct_read_dim_gd(nct_dim* dest, int ncid, int dimid);
 nct_dim* nct_read_dim(int ncid, int dimid);
@@ -124,4 +125,7 @@ void nct_link_dims_to_coords(nct_vset* dest);
 #define ONE_TYPE(nctype,form,ctype) nct_vset* nct_add_coord_range_##nctype(nct_vset* dest, ctype i0, ctype i1, ctype gap);
 ALL_TYPES_EXCEPT_STRING
 #undef ONE_TYPE
+
+extern const char* error_color;
+extern const char* default_color;
 #endif
