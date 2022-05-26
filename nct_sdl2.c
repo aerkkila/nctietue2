@@ -18,9 +18,17 @@ static double scale;
   {									\
     int xlen = var->dimlens[xid];					\
     double di=0, dj=0;							\
+    ctype maxval, minval;						\
+    maxval = minval = ((ctype*)var->data)[0];				\
+    int len = xlen*var->dimlens[yid];					\
+    for(int i=0; i<len; i++)						\
+      if(maxval < ((ctype*)var->data)[i])				\
+	maxval = ((ctype*)var->data)[i];				\
+      else if(minval > ((ctype*)var->data)[i])				\
+	minval = ((ctype*)var->data)[i];				\
     for(int j=0; j<win_h; j++, dj+=scale) {				\
       for(int i=0; i<win_w; i++, di+=scale) {				\
-	int value = ((ctype*)var->data)[(int)dj*xlen + (int)di];	\
+	int value = (((ctype*)var->data)[(int)dj*xlen + (int)di] - minval) * 255 / (maxval-minval); \
 	SDL_SetRenderDrawColor(rend, value, value, value, 255);		\
 	SDL_RenderDrawPoint(rend, i, j);				\
       }									\
