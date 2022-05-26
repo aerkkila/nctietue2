@@ -1,5 +1,6 @@
 #include "nctietue.c"
 #include "nct_png.c"
+#include "nct_sdl2.c"
 
 int main(int argc, char** argv) {
   int xdata[5] = {0};
@@ -24,6 +25,8 @@ int main(int argc, char** argv) {
   nct_vset_isel(uusi, nct_get_dimid(uusi, "x"), 100, 400);
   nct_print_vset(uusi);
   nct_write_ncfile(uusi, "./kuva_rajattu.nc");
+
+  nct_plot_var(uusi->vars + nct_get_varid(uusi, "data"));
 
   nct_free_vset(vs);
   nct_free_vset(uusi);

@@ -23,7 +23,8 @@ nct_vset* nct_open_png_gd(nct_vset* dest, char* name) {
   png_init_io(png_p, filein);
   png_read_info(png_p, info_p);
 
-  int width, height, bit_depth, color_type, interlace_type;
+  unsigned width, height;
+  int bit_depth, color_type, interlace_type;
   png_get_IHDR(png_p, info_p, &width, &height, &bit_depth, &color_type, &interlace_type, NULL, NULL);
   if(interlace_type != PNG_INTERLACE_NONE) {
     fprintf(stderr, "png_interlace_type must be PNG_INTERLACE_NONE\n");
