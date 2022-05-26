@@ -31,8 +31,7 @@ typedef struct {
 /*With this macro one can define functions for all nct_var types without repeating things.
   First define ONE_TYPE in a wanted way, then add ALL_TYPES then undef ONE_TYPE
   Functions can be further added into an array of function pointers with the same syntax
-  which allows use of nc_type (int) nct_var as an index to access the right function.
-  Reading the code will make this clearer.*/
+  which allows use of nc_type (int) as an index to access the right function.*/
 #define ALL_TYPES_EXCEPT_STRING			\
   ONE_TYPE(NC_BYTE, hhi, char)			\
   ONE_TYPE(NC_UBYTE, hhu, unsigned char)     	\
@@ -93,7 +92,7 @@ ALL_EQ_OPERATIONS
 void nct_init();
 
 nct_vset* nct_vset_isel(nct_vset* vset, int dimid, size_t ind0, size_t ind1);
-int nct_vset_get_dimid(nct_vset* vset, char* name);
+int nct_get_dimid(nct_vset* vset, char* name);
 int nct_get_varid(nct_vset* vset, char* name);
 
 nct_dim* nct_read_dim_gd(nct_dim* dest, int ncid, int dimid);
@@ -117,6 +116,9 @@ nct_vset* nct_read_ncfile(const char* restrict filename);
 void nct_write_ncfile(const nct_vset* src, const char* name);
 nct_vset* nct_vsetcpy_gd(nct_vset* dest, const nct_vset* src);
 nct_vset* nct_vsetcpy(const nct_vset* src);
+#define ONE_TYPE(nctype,b,ctype) nct_vset* nct_vset_from_data(nct_vset* vset, ...);
+ALL_TYPES_EXCEPT_STRING
+#undef ONE_TYPE
 nct_vset* nct_add_dim(nct_vset*, size_t, char*);
 nct_vset* nct_add_coord(nct_vset*, void*, size_t, nc_type, char*);
 nct_vset* nct_simply_add_var(nct_vset*, void*, nc_type, int, int*, char*);
@@ -126,9 +128,10 @@ nct_vset* nct_assign_var(nct_vset*, nct_var*);
 void nct_free_vset(nct_vset*);
 void nct_link_vars_to_dimnames(nct_vset* vs);
 void nct_link_dims_to_coords(nct_vset* dest);
-#define ONE_TYPE(nctype,form,ctype) nct_vset* nct_add_coord_range_##nctype(nct_vset* dest, ctype i0, ctype i1, ctype gap);
+#define ONE_TYPE(nctype,b,ctype) ctype* nct_range_##nctype(ctype p0, ctype p1, ctype gap);
 ALL_TYPES_EXCEPT_STRING
 #undef ONE_TYPE
+nct_vset* nct_assign_shape(nct_vset*, ...);
 
 extern const char* error_color;
 extern const char* default_color;
