@@ -85,7 +85,15 @@ ALL_TYPES
 void nct_print_var_data(nct_var*);
 void nct_print_var(nct_var* var, const char* indent);
 void nct_print_vset(nct_vset* vs);
-nct_var* var_from_vset(nct_vset* vs, char* name);
+//nct_var* var_from_vset(nct_vset* vs, char* name);
+
+#define OPERATION(nctype, a, ctype, opername, b) nct_var* nct_var_##opername##_##nctype(nct_var*, void*);
+#include "operations_and_types.h"
+#undef OPERATION
+#define ONE_OPERATION(opername, a) nct_var* nct_var_##opername(nct_var*, void*);
+ALL_EQ_OPERATIONS
+#undef ONE_OPERATION
+
 #define OPERATION(nctype, a, ctype, opername, b) nct_var* vararr_##opername##_##nctype(nct_var*, void*);
 #include "operations_and_types.h"
 #undef OPERATION
@@ -95,7 +103,9 @@ ALL_EQ_OPERATIONS
 #define ONE_OPERATION(opername, a) nct_var* vararrs_##opername(nct_var*, ...);
 ALL_EQ_OPERATIONS
 #undef ONE_OPERATION
+
 void nct_init();
+
 #define ONE_TYPE(nctype, a, ctype) void* nct_minmax_##nctype(nct_var*, void*);
 ALL_TYPES_EXCEPT_STRING
 #undef ONE_TYPE

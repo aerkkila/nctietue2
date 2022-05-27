@@ -86,6 +86,17 @@ nct_var* var_from_vset(nct_vset* vs, char* name) {
  * using operations_and_types.h which defines all their combinations
  *––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––*/
 
+#define OPERATION(nctype, a, ctype, opername, oper)			\
+  nct_var* nct_var_##opername##_##nctype(nct_var* var, void* vvalue)	\
+  {									\
+    ctype value = *((ctype*)vvalue);					\
+    for(size_t i=0; i<var->len; i++)					\
+      ((ctype*)var->data)[i] oper value;				\
+    return var;								\
+  }
+#include "operations_and_types.h"
+#undef OPERATION
+
 #define OPERATION(nctype, form, ctype, opername, oper)			\
   nct_var* vararr_##opername##_##nctype(nct_var* v0, void* arr) {	\
     for(size_t i=0; i<v0->len; i++)					\
@@ -97,7 +108,18 @@ nct_var* var_from_vset(nct_vset* vs, char* name) {
 
 /*Define arrays of the functions. NC_STRING has greatest index.
   A separate init-function is needed to put function pointers into the arrays.*/
+#define ONE_OPERATION(opername, a) nct_var* (*nct_var_##opername##_functions[NC_STRING])(nct_var* v0, void* value);
+ALL_EQ_OPERATIONS
+#undef ONE_OPERATION
+
 #define ONE_OPERATION(opername, a) nct_var* (*vararr_##opername##_functions[NC_STRING])(nct_var* v0, void* arr);
+ALL_EQ_OPERATIONS
+#undef ONE_OPERATION
+
+#define ONE_OPERATION(opername, oper)					\
+  nct_var* nct_var_##opername(nct_var* v0, void* value) {		\
+    return nct_var_##opername##_functions[v0->xtype](v0, value);	\
+  }
 ALL_EQ_OPERATIONS
 #undef ONE_OPERATION
 
@@ -133,7 +155,9 @@ FINISHED:						\
 ALL_EQ_OPERATIONS
 #undef ONE_OPERATION
 
-#define OPERATION(nctype, a, b, opername, c) vararr_##opername##_functions[nctype] = vararr_##opername##_##nctype;
+#define OPERATION(nctype, a, b, opername, c)				\
+  vararr_##opername##_functions[nctype] = vararr_##opername##_##nctype;	\
+  nct_var_##opername##_functions[nctype] = nct_var_##opername##_##nctype;
 void nct_init() {
 #include "operations_and_types.h"
 }
