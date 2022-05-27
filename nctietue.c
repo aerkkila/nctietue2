@@ -1,4 +1,3 @@
-#include <netcdf.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -139,6 +138,30 @@ void nct_init() {
 #include "operations_and_types.h"
 }
 #undef OPERATION
+
+#define ONE_TYPE(nctype, b, ctype)					\
+  void* nct_minmax_##nctype(nct_var* var, void* resultv)		\
+  {									\
+    ctype maxval, minval, *result=resultv;				\
+    maxval = minval = ((ctype*)var->data)[0];				\
+    for(int i=1; i<var->len; i++)					\
+      if(maxval < ((ctype*)var->data)[i])				\
+	maxval = ((ctype*)var->data)[i];				\
+      else if(minval > ((ctype*)var->data)[i])				\
+	minval = ((ctype*)var->data)[i];				\
+    result[0] = minval;							\
+    result[1] = maxval;							\
+    return result;							\
+  }
+ALL_TYPES_EXCEPT_STRING
+#undef ONE_TYPE
+
+#define ONE_TYPE(nctype, a, b) [nctype]=nct_minmax_##nctype,
+void* (*minmax[])(nct_var*, void*) =
+  {
+    ALL_TYPES_EXCEPT_STRING
+  };
+#undef ONE_TYPE
 
 static nct_var* _nct_var_isel(nct_var* var, int dimid, size_t ind0, size_t ind1) {
   int id;

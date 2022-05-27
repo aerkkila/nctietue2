@@ -1,5 +1,8 @@
 #ifndef __NC_TIETUE__
 #define __NC_TIETUE__
+
+#include <netcdf.h>
+
 typedef struct {
   char* name;
   char freeable_name;
@@ -27,6 +30,9 @@ typedef struct {
   int nvars;
   nct_var* vars;
 } nct_vset;
+
+#include "nct_png.h"
+#include "nct_sdl2.h"
 
 /*With this macro one can define functions for all nct_var types without repeating things.
   First define ONE_TYPE in a wanted way, then add ALL_TYPES then undef ONE_TYPE
@@ -90,6 +96,10 @@ ALL_EQ_OPERATIONS
 ALL_EQ_OPERATIONS
 #undef ONE_OPERATION
 void nct_init();
+#define ONE_TYPE(nctype, a, ctype) void* nct_minmax_##nctype(nct_var*, void*);
+ALL_TYPES_EXCEPT_STRING
+#undef ONE_TYPE
+void* nct_minmax(nct_var*, void*);
 
 nct_vset* nct_vset_isel(nct_vset* vset, int dimid, size_t ind0, size_t ind1);
 int nct_get_dimid(nct_vset* vset, char* name);
@@ -116,7 +126,7 @@ nct_vset* nct_read_ncfile(const char* restrict filename);
 void nct_write_ncfile(const nct_vset* src, const char* name);
 nct_vset* nct_vsetcpy_gd(nct_vset* dest, const nct_vset* src);
 nct_vset* nct_vsetcpy(const nct_vset* src);
-#define ONE_TYPE(nctype,b,ctype) nct_vset* nct_vset_from_data(nct_vset* vset, ...);
+#define ONE_TYPE(nctype,b,c) nct_vset* nct_vset_from_data_##nctype(nct_vset* vset, ...);
 ALL_TYPES_EXCEPT_STRING
 #undef ONE_TYPE
 nct_vset* nct_add_dim(nct_vset*, size_t, char*);

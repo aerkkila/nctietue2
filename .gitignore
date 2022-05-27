@@ -4,3 +4,5 @@ _minted-*
 *.log
 *.pdf
 kuva*
+*.so
+*.a
