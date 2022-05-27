@@ -11,7 +11,6 @@
 static SDL_Renderer* rend;
 static SDL_Window* window;
 static SDL_Texture* base;
-static int loop = 1;
 static int win_w, win_h, xid, yid;
 static double scale;
 static unsigned char color1d_fg[3] = {0, 0, 0};
@@ -91,7 +90,6 @@ static void quit() {
   SDL_DestroyRenderer(rend);
   SDL_DestroyWindow(window);
   SDL_Quit();
-  loop = 0;
 }
 
 static nct_var* var;
@@ -114,11 +112,9 @@ static void mainloop() {
   while(1) {
     while(SDL_PollEvent(&event)) {
       if(event.type == SDL_QUIT)
-	quit();
+	return;
       else if(event.type==SDL_WINDOWEVENT && event.window.event==SDL_WINDOWEVENT_RESIZED)
 	resized();
-      if(!loop)
-	return;
     }
     SDL_RenderCopy(rend, base, NULL, NULL);
     SDL_RenderPresent(rend);
@@ -175,4 +171,5 @@ void nct_plot_var(nct_var* var0) {
   redraw(var);
 
   mainloop();
+  quit();
 }

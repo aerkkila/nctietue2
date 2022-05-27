@@ -163,6 +163,10 @@ void* (*minmax[])(nct_var*, void*) =
   };
 #undef ONE_TYPE
 
+void* nct_minmax(nct_var* var, void* resultv) {
+  return minmax[var->xtype](var, resultv);
+}
+
 static nct_var* _nct_var_isel(nct_var* var, int dimid, size_t ind0, size_t ind1) {
   int id;
   for(int i=0; i<var->ndims; i++)
