@@ -167,6 +167,48 @@ void* nct_minmax(nct_var* var, void* resultv) {
   return minmax[var->xtype](var, resultv);
 }
 
+nct_var* nct_var_dropdim0(nct_var* var) {
+  size_t new_len = var->len / var->dimlens[0];
+  var->data = realloc(var->data, new_len*var->size1);
+  var->len = new_len;
+  void* ptr = var->dimnames;
+  memmove(ptr, ptr+sizeof(char*), var->ndims*(sizeof(char*)+sizeof(size_t)+sizeof(int))-sizeof(char*));
+  ptr += (var->ndims-1)*sizeof(char*);
+  memmove(ptr, ptr+sizeof(size_t), var->ndims*(sizeof(size_t)+sizeof(int))-sizeof(size_t));
+  ptr += (var->ndims-1)*sizeof(size_t);
+  memmove(ptr, ptr+sizeof(int), var->ndims*sizeof(int));
+  var->ndims--;
+  var->dimnames = realloc(var->dimnames, var->ndims*(sizeof(char*)+sizeof(size_t)+sizeof(int)));
+  var->dimlens = (size_t*)(var->dimnames+var->ndims);
+  var->dimids = (int*)(var->dimlens+var->ndims);
+  return var;
+}
+
+#define ONE_TYPE(nctype, a, ctype)					\
+  nct_var* nct_varmean0_##nctype(nct_var* var)				\
+  {									\
+    size_t new_len = var->len / var->dimlens[0];			\
+    for(size_t i=0; i<new_len; i++) {					\
+      for(size_t j=1; j<var->dimlens[0]; j++)				\
+	((ctype*)var->data)[i] += ((ctype*)var->data)[i+new_len*j];	\
+      ((ctype*)var->data)[i] /= var->dimlens[0];			\
+    }									\
+    return nct_var_dropdim0(var);					\
+  }
+ALL_TYPES_EXCEPT_STRING
+#undef ONE_TYPE
+
+#define ONE_TYPE(nctype, a, b) [nctype]=nct_varmean0_##nctype,
+nct_var* (*varmean0[])(nct_var*) =
+  {
+    ALL_TYPES_EXCEPT_STRING
+  };
+#undef ONE_TYPE
+
+nct_var* nct_varmean0(nct_var* var) {
+  return varmean0[var->xtype](var);
+}
+
 static nct_var* _nct_var_isel(nct_var* var, int dimid, size_t ind0, size_t ind1) {
   int id;
   for(int i=0; i<var->ndims; i++)
