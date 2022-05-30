@@ -233,6 +233,37 @@ nct_var* nct_varmean0(nct_var* var) {
   return varmean0[var->xtype](var);
 }
 
+#define ONE_TYPE(nctype, a, ctype)					\
+  nct_var* nct_varnanmean0_##nctype(nct_var* var)			\
+  {									\
+    size_t new_len = var->len / var->dimlens[0];			\
+    int count = 0;							\
+    for(size_t i=0; i<new_len; i++) {					\
+      for(size_t j=1; j<var->dimlens[0]; j++) {				\
+	ctype test = ((ctype*)var->data)[i+new_len*j];			\
+	if(test==test) {						\
+	  count++;							\
+	  ((ctype*)var->data)[i] += test;				\
+	}								\
+      }									\
+      ((ctype*)var->data)[i] /= count;					\
+    }									\
+    return nct_var_dropdim0(var);					\
+  }
+ALL_TYPES_EXCEPT_STRING
+#undef ONE_TYPE
+
+#define ONE_TYPE(nctype, a, b) [nctype]=nct_varnanmean0_##nctype,
+nct_var* (*varnanmean0[])(nct_var*) =
+  {
+    ALL_TYPES_EXCEPT_STRING
+  };
+#undef ONE_TYPE
+
+nct_var* nct_varnanmean0(nct_var* var) {
+  return varnanmean0[var->xtype](var);
+}
+
 static nct_var* _nct_var_isel(nct_var* var, int dimid, size_t ind0, size_t ind1) {
   int id;
   for(int i=0; i<var->ndims; i++)
@@ -290,8 +321,7 @@ int nct_get_varid(nct_vset* vset, char* name) {
 
 nct_dim* nct_read_dim_gd(nct_dim* dest, int ncid, int dimid) {
   char name[256];
-  size_t* len_p = &dest->len;
-  nc_inq_dim(ncid, dimid, name, len_p);
+  nc_inq_dim(ncid, dimid, name, &dest->len);
   dest->name = strdup(name);
   dest->freeable_name = 1;
   return dest;

@@ -114,6 +114,10 @@ void* nct_minmax(nct_var*, void*);
 ALL_TYPES_EXCEPT_STRING
 #undef ONE_TYPE
 nct_var* nct_varmean0(nct_var*);
+#define ONE_TYPE(nctype, a, ctype) nct_var* nct_varnanmean0_##nctype(nct_var*);
+ALL_TYPES_EXCEPT_STRING
+#undef ONE_TYPE
+nct_var* nct_varnanmean0(nct_var*);
 
 nct_vset* nct_vset_isel(nct_vset* vset, int dimid, size_t ind0, size_t ind1);
 int nct_get_dimid(nct_vset* vset, char* name);
