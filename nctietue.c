@@ -238,15 +238,16 @@ nct_var* nct_varmean0(nct_var* var) {
   {									\
     size_t new_len = var->len / var->dimlens[0];			\
     for(size_t i=0; i<new_len; i++) {					\
-      int count = 1;							\
-      for(size_t j=1; j<var->dimlens[0]; j++) {				\
+      int count = 0;							\
+      ctype new_value = 0;						\
+      for(size_t j=0; j<var->dimlens[0]; j++) {				\
 	ctype test = ((ctype*)var->data)[i+new_len*j];			\
 	if(test==test) {						\
 	  count++;							\
-	  ((ctype*)var->data)[i] += test;				\
+	  new_value += test;						\
 	}								\
       }									\
-      ((ctype*)var->data)[i] /= count;					\
+      ((ctype*)var->data)[i] = new_value/count;				\
     }									\
     return nct_var_dropdim0(var);					\
   }
