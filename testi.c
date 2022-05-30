@@ -1,6 +1,5 @@
-#include "nctietue.c"
-#include "nct_png.c"
-#include "nct_sdl2.c"
+#include <nctietue/nctietue.h>
+#include <stdlib.h>
 
 int main(int argc, char** argv) {
   int xdata[5] = {0};
