@@ -29,6 +29,7 @@ typedef struct {
   nct_dim* dims;
   int nvars;
   nct_var* vars;
+  int ncid;
 } nct_vset;
 
 #include "nct_png.h"
@@ -123,14 +124,14 @@ nct_vset* nct_vset_isel(nct_vset* vset, int dimid, size_t ind0, size_t ind1);
 int nct_get_dimid(nct_vset* vset, char* name);
 int nct_get_varid(nct_vset* vset, char* name);
 
-nct_dim* nct_read_dim_gd(nct_dim* dest, int ncid, int dimid);
-nct_dim* nct_read_dim(int ncid, int dimid);
+nct_vset* nct_read_dim(nct_vset*, int dimid);
 nct_dim* nct_dimcpy_gd(nct_dim* dest, const nct_dim* src);
 nct_dim* nct_dimcpy(const nct_dim* src);
 void nct_free_dim(nct_dim*);
 
-nct_var* nct_read_var_gd(nct_var* dest, int ncid, int varid, nct_dim* dims);
-nct_var* nct_read_var(int ncid, int varid, nct_dim* dims);
+nct_vset* nct_load_var(nct_vset* vset, int varid);
+nct_vset* nct_read_var_info(nct_vset *vset, int varid);
+nct_vset* nct_read_var(nct_vset* vset, int varid);
 nct_var* nct_varcpy_gd(nct_var* dest, const nct_var* src);
 nct_var* nct_varcpy(const nct_var* src);
 nct_var* nct_to_var_gd(nct_var* dest, void* arr, size_t len, nc_type xtype, char* name);
