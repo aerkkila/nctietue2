@@ -138,7 +138,7 @@ static void _plot_var_1d(nct_var* var) {
 
 void nct_plot_var(nct_var* var0) {
   if(SDL_Init(SDL_INIT_VIDEO)) {
-    fprintf(stderr, "%sError in SDL_INIT:%s %s\n", error_color, SDL_GetError(), default_color);
+    fprintf(stderr, "%sError in SDL_INIT:%s %s\n", nct_error_color, SDL_GetError(), nct_default_color);
     return;
   }
   SDL_Event event;
@@ -146,7 +146,7 @@ void nct_plot_var(nct_var* var0) {
   var = var0;
   SDL_DisplayMode dm;
   if(SDL_GetCurrentDisplayMode(0, &dm)) {
-    fprintf(stderr, "%sError in getting monitor size%s: %s\n", error_color, SDL_GetError(), default_color);
+    fprintf(stderr, "%sError in getting monitor size%s: %s\n", nct_error_color, SDL_GetError(), nct_default_color);
     win_w = win_h = 500;
   } else {
     win_w = dm.w;

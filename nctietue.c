@@ -5,21 +5,12 @@
 #include <stdint.h>
 #include "nctietue.h"
 
-const char* error_color   = "\033[1;31m";
-const char* varset_color  = "\033[1;93m";
-const char* varname_color = "\033[92m";
-const char* type_color    = "\033[35m";
-const char* default_color = "\033[0m";
-
+const char* nct_error_color   = "\033[1;31m";
+const char* nct_varset_color  = "\033[1;93m";
+const char* nct_varname_color = "\033[92m";
+const char* nct_type_color    = "\033[35m";
+const char* nct_default_color = "\033[0m";
 int ncret;
-#define NCERROR(arg) printf("%sNetcdf-error: %s%s\n", error_color, default_color, nc_strerror(arg))
-#define NCFUNK(fun, ...)		\
-  do {					\
-    if((ncret = fun(__VA_ARGS__))) {	\
-      NCERROR(ncret);			\
-      asm("int $3");			\
-    }					\
-  } while(0)
 
 /*printfunctions for all nct_var types*/
 #define ONE_TYPE(nctype, form, ctype)			\
@@ -55,10 +46,11 @@ void nct_print_var_data(nct_var* var) {
   printfun(var->data, var->len-8, var->len);
 }
 
-void nct_print_var(nct_var* var, const char* indent) {
+void nct_print_var(nct_vset* vset, int varid, const char* indent) {
+  nct_var* var = vset->vars+varid;
   printf("%s%s%s %s%s(%zu)%s%s:\n%s  %i dims: ( ",
-	 indent, type_color, type_names[var->xtype],
-	 varname_color, var->name, var->len, default_color, var->iscoordinate? " (coordinate)": "",
+	 indent, nct_type_color, type_names[var->xtype],
+	 nct_varname_color, var->name, nct_getlen(vset,varid), nct_default_color, var->iscoordinate? " (coordinate)": "",
 	 indent, var->ndims);
   for(int i=0; i<var->ndims; i++)
     printf("%s(%zu), ", var->dimnames[i], var->dimlens[i]);
@@ -68,17 +60,22 @@ void nct_print_var(nct_var* var, const char* indent) {
   puts("]");
 }
 
-void nct_print_vset(nct_vset* vs) {
-  printf("%s%i vars, %i dims%s\n", varset_color, vs->nvars, vs->ndims, default_color);
-  for(int i=0; i<vs->nvars; i++)
-    nct_print_var(vs->vars+i, "  ");
+void nct_print_vset_title(nct_vset* vs) {
+  printf("%s%i variables, %i dimensions%s\n", nct_varset_color, vs->nvars, vs->ndims, nct_default_color);
 }
 
-nct_var* var_from_vset(nct_vset* vs, char* name) {
+void nct_print_vset(nct_vset* vs) {
+  nct_print_vset_title(vs);
   for(int i=0; i<vs->nvars; i++)
-    if(!strcmp(vs->vars[i].name, name))
-      return vs->vars+i;
-  return NULL;
+    nct_print_var(vs, i, "  ");
+}
+
+size_t nct_getlen(nct_vset* vset, int varid) {
+  size_t len = 1;
+  nct_var* var = vset->vars+varid;
+  for(int i=0; i<vset->vars[varid].ndims; i++)
+    len *= vset->dims[var->dimids[i]].len;
+  return len;
 }
 
 /*–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
@@ -336,10 +333,41 @@ nct_vset* nct_read_dim(nct_vset* vset, int dimid) {
 
 nct_vset* nct_load_var(nct_vset* vset, int varid) {
   nct_var* var = vset->vars+varid;
-  var->data = malloc(var->len*var->size1);
+  var->len = nct_getlen(vset, varid);
+  if(!var->data)
+    var->data = malloc(var->len*var->size1);
   NCFUNK(nc_get_var, vset->ncid, varid, var->data);
   return vset;
 }
+
+#if 0
+nct_vset* nct_nload_var(nct_vset* vset, int varid, size_t start, size_t len) {
+  nct_var* var = vset->vars+varid;
+  size_t ptr0[var->ndims];
+  size_t ptr1[var->ndims];
+  size_t cumlen[var->ndims];
+  cumlen[var->ndims-1] = 1;
+  for(int i=var->ndims-1; i>0; i--)
+    cumlen[i-1] = cumlen[i] * vset->dims[var->dimids[i]].len;
+  /*coordinates of the start index*/
+  size_t run = start;
+  for(int i=0; i<var->ndims; i++) {
+    ptr0[i] = run/cumlen[i];
+    run -= ptr0[i]*cumlen[i];
+  }
+  /*coordinates of the end index*/
+  run = start + len;
+  for(int i=0; i<var->ndims; i++) {
+    ptr1[i] = run/cumlen[i];
+    run -= ptr1[i]*cumlen[i];
+  }
+  if(!var->data)
+    var->data = malloc(len*var->size1);
+  NCFUNK(nc_get_vara, vset->ncid, varid, ptr0, ptr1, var->data+var->len*var->size1);
+  var->len += len;
+  return vset;
+}
+#endif
 
 nct_vset* nct_read_var_info(nct_vset *vset, int varid) {
   int ndims, dimids[128];
@@ -353,16 +381,15 @@ nct_vset* nct_read_var_info(nct_vset *vset, int varid) {
   dest->dimnames = malloc(ndims * (sizeof(char*) + sizeof(size_t) + sizeof(int)));
   dest->dimlens = (size_t*)(dest->dimnames + ndims);
   dest->dimids = (int*)(dest->dimlens + ndims);
-  dest->len = 1;
   for(int i=0; i<ndims; i++) {
     dest->dimnames[i] = vset->dims[dimids[i]].name;
     dest->dimlens[i] = vset->dims[dimids[i]].len;
     dest->dimids[i] = dimids[i];
-    dest->len *= vset->dims[dimids[i]].len;
   }
   dest->xtype = xtype;
   dest->size1 = nctypelen(xtype);
   dest->data = NULL;
+  dest->len = 0;
   return vset;
 }
 
@@ -384,6 +411,9 @@ nct_vset* nct_read_ncfile_info_gd(nct_vset* dest, const char* restrict filename)
     nct_read_var_info(dest, i);
   nct_link_dims_to_coords(dest);
   return dest;
+}
+nct_vset* nct_read_ncfile_info(const char* restrict filename) {
+  return nct_read_ncfile_info_gd(calloc(1,sizeof(nct_vset)), filename);
 }
 
 nct_vset* nct_read_ncfile_gd(nct_vset* dest, const char* restrict filename) {
@@ -425,6 +455,8 @@ void nct_write_ncfile(const nct_vset* src, const char* name) {
     nct_var* v = src->vars+i;
     NCFUNK(nc_def_var, ncid, v->name, v->xtype, v->ndims, v->dimids, &id);
     NCFUNK(nc_put_var, ncid, id, v->data);
+    for(int a=0; a<v->nattrs; a++)
+      NCFUNK(nc_put_att_text, ncid, i, v->attrs[a].name, strlen(v->attrs[a].value)+1, v->attrs[a].value);
   }
   NCFUNK(nc_close, ncid);
 }
@@ -538,6 +570,7 @@ void nct_free_var(nct_var* var) {
   if(var->xtype == NC_STRING)
     for(int i=0; i<var->len; i++)
       free(((char**)var->data)[i]);
+  free(var->attrs);
   free(var->data);
   if(var->freeable_name)
     free(var->name);
@@ -618,12 +651,13 @@ nct_dim* nct_to_coord(void* arr, size_t len, nc_type xtype, char* name) {
 #define ONE_TYPE(nctype,form,ctype)				\
   ctype* nct_range_##nctype(ctype i0, ctype i1, ctype gap) {	\
     size_t len = (i1-i0)/gap;					\
+    while(i0+len*gap < i1) len++;				\
     ctype* dest = malloc(len*sizeof(ctype));			\
     ctype num = i0-gap;						\
     for(size_t i=0; i<len; i++)					\
       dest[i] = num+=gap;					\
     return dest;						\
-  }
+}
 ALL_TYPES_EXCEPT_STRING
 #undef ONE_TYPE
 
@@ -632,6 +666,13 @@ nct_vset* nct_add_dim(nct_vset* vset, size_t len, char* name) {
   vset->dims[ind].name = name;
   vset->dims[ind].freeable_name = 0;
   vset->dims[ind].len = len;
+  return vset;
+}
+
+nct_vset* nct_add_att_text(nct_vset* vset, int varid, char* name, char* value) {
+  nct_var* var = vset->vars + varid;
+  var->attrs = realloc(var->attrs, ++var->nattrs*sizeof(nct_att));
+  var->attrs[var->nattrs-1] = (nct_att){.name=name, .value=value};
   return vset;
 }
 

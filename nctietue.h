@@ -5,12 +5,19 @@
 
 typedef struct {
   char* name;
+  char* value;
+} nct_att;
+
+typedef struct {
+  char* name;
   char freeable_name;
   char iscoordinate;
   int ndims;
   char** dimnames; //pointers to names in nct_dim-structs
   size_t* dimlens; //
   int* dimids;     //these three arrays come from one malloc for dimnames + dimlens + dimids
+  int nattrs;
+  nct_att* attrs;
   size_t len;
   int size1;
   nc_type xtype;
@@ -31,6 +38,22 @@ typedef struct {
   nct_var* vars;
   int ncid;
 } nct_vset;
+
+extern const char* nct_error_color;
+extern const char* nct_varset_color;
+extern const char* nct_varname_color;
+extern const char* nct_type_color;
+extern const char* nct_default_color;
+
+extern int ncret;
+#define NCERROR(arg) printf("%sNetcdf-error: %s%s\n", nct_error_color, nct_default_color, nc_strerror(arg))
+#define NCFUNK(fun, ...)		\
+  do {					\
+    if((ncret = fun(__VA_ARGS__))) {	\
+      NCERROR(ncret);			\
+      asm("int $3");			\
+    }					\
+  } while(0)
 
 #include "nct_png.h"
 #include "nct_sdl2.h"
@@ -84,9 +107,11 @@ typedef struct {
 ALL_TYPES
 #undef ONE_TYPE
 void nct_print_var_data(nct_var*);
-void nct_print_var(nct_var* var, const char* indent);
+void nct_print_var(nct_vset* vset, int varid, const char* indent);
+void nct_print_vset_title(nct_vset* vs);
 void nct_print_vset(nct_vset* vs);
-//nct_var* var_from_vset(nct_vset* vs, char* name);
+
+size_t nct_getlen(nct_vset* vset, int varid);
 
 #define OPERATION(nctype, a, ctype, opername, b) nct_var* nct_var_##opername##_##nctype(nct_var*, void*);
 #include "operations_and_types.h"
@@ -130,6 +155,7 @@ nct_dim* nct_dimcpy(const nct_dim* src);
 void nct_free_dim(nct_dim*);
 
 nct_vset* nct_load_var(nct_vset* vset, int varid);
+nct_vset* nct_nload_var(nct_vset* vset, int varid, size_t start, size_t len);
 nct_vset* nct_read_var_info(nct_vset *vset, int varid);
 nct_vset* nct_read_var(nct_vset* vset, int varid);
 nct_var* nct_varcpy_gd(nct_var* dest, const nct_var* src);
@@ -141,6 +167,8 @@ nct_var* nct_copy_to_var(void* arr, size_t len, nc_type xtype, char* name);
 nct_var* nct_var_dropdim0(nct_var*);
 void nct_free_var(nct_var*);
 
+nct_vset* nct_read_ncfile_info(const char* restrict);
+nct_vset* nct_read_ncfile_info_gd(nct_vset*, const char* restrict);
 nct_vset* nct_read_ncfile_gd(nct_vset* dest, const char* restrict filename);
 nct_vset* nct_read_ncfile(const char* restrict filename);
 void nct_write_ncfile(const nct_vset* src, const char* name);
@@ -151,6 +179,7 @@ ALL_TYPES_EXCEPT_STRING
 #undef ONE_TYPE
 nct_vset* nct_add_dim(nct_vset*, size_t, char*);
 nct_vset* nct_add_coord(nct_vset*, void*, size_t, nc_type, char*);
+nct_vset* nct_add_att_text(nct_vset* vset, int varid, char* name, char* value);
 nct_vset* nct_simply_add_var(nct_vset*, void*, nc_type, int, int*, char*);
 nct_vset* nct_add_var_with_dimids(nct_vset*, void*, nc_type, int, int*, char**, size_t*, char*);
 nct_vset* nct_add_var(nct_vset*, void*, nc_type, int, int*, char**, size_t*, char*);
