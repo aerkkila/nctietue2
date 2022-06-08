@@ -6,6 +6,8 @@
 typedef struct {
   char* name;
   char* value;
+  unsigned freeable;
+  nc_type xtype;
 } nct_att;
 
 typedef struct {
@@ -179,8 +181,11 @@ ALL_TYPES_EXCEPT_STRING
 #undef ONE_TYPE
 nct_vset* nct_add_dim(nct_vset*, size_t, char*);
 nct_vset* nct_add_coord(nct_vset*, void*, size_t, nc_type, char*);
-nct_vset* nct_add_att_text(nct_vset* vset, int varid, char* name, char* value);
+nct_vset* nct_add_att_text(nct_vset* vset, int varid, char* name, char* value, unsigned freeable);
 nct_vset* nct_simply_add_var(nct_vset*, void*, nc_type, int, int*, char*);
+char* nct_find_unique_varname(nct_vset* vset, char* initname);
+nct_vset* nct_move_similar_var(nct_vset* vset0, nct_vset* vset, int varid);
+nct_vset* nct_move_similar_vset(nct_vset* vset0, nct_vset* vset);
 nct_vset* nct_add_var_with_dimids(nct_vset*, void*, nc_type, int, int*, char**, size_t*, char*);
 nct_vset* nct_add_var(nct_vset*, void*, nc_type, int, int*, char**, size_t*, char*);
 nct_vset* nct_assign_var(nct_vset*, nct_var*);

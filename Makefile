@@ -1,10 +1,10 @@
 include config.mk
 
 libnctietue.so: nct*.[ch] operations_and_types.h
-	gcc -Wall -shared -fpic -o $@ nct*.c -O3
-
-libnctietue_d.so: nct*.[ch] operations_and_types.h
 	gcc -Wall -shared -fpic -g3 -gdwarf-2 -o $@ nct*.c
+
+libnctietue0.so: nct*.[ch] operations_and_types.h
+	gcc -Wall -shared -fpic -o $@ nct*.c -O3
 
 install: libnctietue.so
 	mkdir -p ${prefix}/include/nctietue

@@ -61,7 +61,7 @@ nct_vset* nct_open_png_gd(nct_vset* dest, char* name) {
     nct_add_coord(dest, nct_range_NC_UINT64(0,height,1), height, NC_UINT64, "y");
 
   int dimids[] = {1,0};
-  dest->vars = realloc(dest->vars, ++dest->nvars*sizeof(nct_var));
+  dest->vars = realloc(dest->vars, (dest->nvars+1)*sizeof(nct_var));
   nct_simply_add_var(dest, data, NC_UBYTE, 2, dimids, "data");
   return dest;
 }

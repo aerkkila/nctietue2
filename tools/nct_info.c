@@ -1,5 +1,7 @@
-#include "../nctietue.c"
+#include <nctietue/nctietue.h>
+#include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 void no_argument() {
   char* lang = getenv("LANG");
@@ -25,15 +27,15 @@ int main(int argc, char** argv) {
     nct_print_vset_title(&vset);
     for(int varid=0; varid<vset.nvars; varid++) {
       nct_var* var = vset.vars+varid;
-      var->data = dataarr;
-      if(nct_getlen(&vset, varid) <= 2*halflen)
+      //var->data = dataarr;
+      if(1)//nct_getlen(&vset, varid) <= 2*halflen)
 	nct_load_var(&vset, varid);
       else {
 	nct_nload_var(&vset, varid, 0, halflen);
 	nct_nload_var(&vset, varid, nct_getlen(&vset, varid)-halflen, halflen);
       }
       nct_print_var(&vset, varid, "  ");
-      var->data = NULL;
+      //var->data = NULL;
     }
     NCFUNK(nc_close, vset.ncid);
     nct_free_vset(&vset);
