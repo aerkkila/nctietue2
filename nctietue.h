@@ -57,6 +57,9 @@ extern int ncret;
     }					\
   } while(0)
 
+#include "nct_png.h"
+#include "nct_sdl2.h"
+
 /*With this macro one can define functions for all nct_var types without repeating things.
   First define ONE_TYPE in a wanted way, then add ALL_TYPES then undef ONE_TYPE
   Functions can be further added into an array of function pointers with the same syntax
@@ -147,6 +150,7 @@ nct_var* nct_varnanmean0(nct_var*);
 nct_vset* nct_vset_isel(nct_vset* vset, int dimid, size_t ind0, size_t ind1);
 int nct_get_dimid(nct_vset* vset, char* name);
 int nct_get_varid(nct_vset* vset, char* name);
+char* nct_get_att_text(nct_vset* vset, int varid, char* name);
 
 nct_vset* nct_read_dim(nct_vset*, int dimid);
 nct_dim* nct_dimcpy_gd(nct_dim* dest, const nct_dim* src);

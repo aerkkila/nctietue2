@@ -318,6 +318,14 @@ int nct_get_varid(nct_vset* vset, char* name) {
   return -1;
 }
 
+char* nct_get_att_text(nct_vset* vset, int varid, char* name) {
+  nct_var* var = vset->vars+varid;
+  for(int i=0; i<var->nattrs; i++)
+    if(!strcmp(var->attrs[i].name, name))
+      return var->attrs[i].value;
+  return NULL;
+}
+
 /*–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
  * Reading and writing data
  *––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––*/
