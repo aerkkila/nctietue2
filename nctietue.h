@@ -57,9 +57,6 @@ extern int ncret;
     }					\
   } while(0)
 
-#include "nct_png.h"
-#include "nct_sdl2.h"
-
 /*With this macro one can define functions for all nct_var types without repeating things.
   First define ONE_TYPE in a wanted way, then add ALL_TYPES then undef ONE_TYPE
   Functions can be further added into an array of function pointers with the same syntax
