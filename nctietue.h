@@ -56,6 +56,7 @@ extern int ncret;
       asm("int $3");			\
     }					\
   } while(0)
+#define NCTVAR(vset,name) (vset).vars[nct_get_varid(&(vset),name)]
 
 #include "nct_png.h"
 #include "nct_sdl2.h"
