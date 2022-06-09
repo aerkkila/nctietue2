@@ -57,6 +57,7 @@ extern int ncret;
     }					\
   } while(0)
 #define NCTVAR(vset,name) (vset).vars[nct_get_varid(&(vset),name)]
+#define NCTDIM(vset,name) (vset).dims[nct_get_dimid(&(vset),name)]
 
 #include "nct_png.h"
 #include "nct_sdl2.h"

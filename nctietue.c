@@ -719,7 +719,7 @@ nct_vset* nct_add_coord(nct_vset* vset, void* src, size_t len, nc_type xtype, ch
   vset->dims = realloc(vset->dims, vset->ndims*sizeof(nct_dim));
   nct_add_dim(vset, len, name);
 
-  vset->vars = realloc(vset->vars, vset->nvars*sizeof(nct_var));
+  vset->vars = realloc(vset->vars, (vset->nvars+1)*sizeof(nct_var));
   int dimid = vset->ndims-1;
   nct_simply_add_var(vset, src, xtype, 1, &dimid, name)->vars[vset->nvars-1].iscoordinate = 1;
 
