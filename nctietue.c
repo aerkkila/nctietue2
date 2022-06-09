@@ -326,6 +326,13 @@ char* nct_get_att_text(nct_vset* vset, int varid, char* name) {
   return NULL;
 }
 
+int nct_get_noncoord_varid(nct_vset* vset) {
+  for(int i=0; i<vset->nvars; i++)
+    if(!(vset->vars[i].iscoordinate))
+      return i;
+  return -1;
+}
+
 /*–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
  * Reading and writing data
  *––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––*/

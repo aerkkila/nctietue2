@@ -7,15 +7,30 @@
 #define MIN(a,b) (a)<=(b)? (a): (b)
 #define GET_SCALE(xlen,win_w,ylen,win_h) MIN((float)(ylen)/(win_h), (float)(xlen)/(win_w))
 #define GET_XSCALE_1D(xlen, win_w) (float)(xlen)/(win_w)
+#define ARRSIZE(a) sizeof(a)/sizeof(*(a))
 
 static SDL_Renderer* rend;
 static SDL_Window* window;
 static SDL_Texture* base;
 static int win_w, win_h, xid, yid;
+static int invert_y, stop;
 static double scale;
 static unsigned char color1d_fg[3] = {0, 0, 0};
 static unsigned char color1d_bg[3] = {255, 255, 255};
 static void (*redraw)(nct_var*);
+
+SDL_Event event;
+
+typedef union {
+  void* v;
+} Arg;
+
+typedef struct {
+  int key;
+  int mod;
+  void (*fun)(Arg);
+  Arg arg;
+} Binding;
 
 #define ONE_TYPE(nctype, b, ctype)					\
   static void draw2d_##nctype(nct_var* var)				\
@@ -24,13 +39,24 @@ static void (*redraw)(nct_var*);
     double di=0, dj=0;							\
     ctype minmax[2];							\
     nct_minmax_##nctype(var, minmax);					\
-    for(int j=0; j<win_h; j++, dj+=scale) {				\
-      for(int i=0; i<win_w; i++, di+=scale) {				\
-	int value = (((ctype*)var->data)[(int)dj*xlen + (int)di] - minmax[0]) * 255 / (minmax[1]-minmax[0]); \
-	SDL_SetRenderDrawColor(rend, value, value, value, 255);		\
-	SDL_RenderDrawPoint(rend, i, j);				\
+    if(invert_y) {							\
+      for(int j=win_h-1; j>=0; j--, dj+=scale) {			\
+	for(int i=0; i<win_w; i++, di+=scale) {				\
+	  int value = (((ctype*)var->data)[(int)dj*xlen + (int)di] - minmax[0]) * 255 / (minmax[1]-minmax[0]); \
+	  SDL_SetRenderDrawColor(rend, value, value, value, 255);	\
+	  SDL_RenderDrawPoint(rend, i, j);				\
+	}								\
+	di = 0;								\
       }									\
-      di = 0;								\
+    } else {								\
+      for(int j=0; j<win_h; j++, dj+=scale) {				\
+	for(int i=0; i<win_w; i++, di+=scale) {				\
+	  int value = (((ctype*)var->data)[(int)dj*xlen + (int)di] - minmax[0]) * 255 / (minmax[1]-minmax[0]); \
+	  SDL_SetRenderDrawColor(rend, value, value, value, 255);	\
+	  SDL_RenderDrawPoint(rend, i, j);				\
+	}								\
+	di = 0;								\
+      }									\
     }									\
   }
 ALL_TYPES_EXCEPT_STRING
@@ -85,7 +111,8 @@ static uint_fast64_t time_now_ms() {
   return t.tv_sec*1000 + t.tv_usec/1000;
 }
 
-static void quit() {
+static void quit(Arg unused) {
+  stop = 1;
   SDL_DestroyTexture(base);
   SDL_DestroyRenderer(rend);
   SDL_DestroyWindow(window);
@@ -107,15 +134,53 @@ static void resized() {
   redraw(var);
 }
 
+void invert_y_func(Arg unused) {
+  invert_y = !invert_y;
+  redraw(var);
+}
+
+Binding keydown_bindings[] = {
+  { SDLK_i, KMOD_SHIFT, invert_y_func, {0} },
+  { SDLK_q, 0,          quit,          {0} },
+};
+
+int get_modstate() {
+  /*makes modstate side-insensitive*/
+  int mod = 0;
+  int mod0 = SDL_GetModState();
+  if(mod0 & KMOD_CTRL)
+    mod |= KMOD_CTRL;
+  if(mod0 & KMOD_SHIFT)
+    mod |= KMOD_SHIFT;
+  if(mod0 & KMOD_ALT)
+    mod |= KMOD_ALT;
+  if(mod0 & KMOD_GUI)
+    mod |= KMOD_GUI;
+  return mod;
+}
+
+void keydown_func() {
+  int len = ARRSIZE(keydown_bindings);
+#define A keydown_bindings[i]
+  for(int i=0; i<len; i++)
+    if(event.key.keysym.sym == A.key)
+      if(get_modstate() == A.mod)
+	A.fun(A.arg);
+#undef A
+}
+
 static void mainloop() {
-  SDL_Event event;
   while(1) {
     while(SDL_PollEvent(&event)) {
       if(event.type == SDL_QUIT)
-	return;
+	quit((Arg){0});
       else if(event.type==SDL_WINDOWEVENT && event.window.event==SDL_WINDOWEVENT_RESIZED)
 	resized();
+      else if(event.type==SDL_KEYDOWN)
+	keydown_func();
+      if(stop) return;
     }
+    if(stop) return;
     SDL_RenderCopy(rend, base, NULL, NULL);
     SDL_RenderPresent(rend);
     SDL_Delay(12);
@@ -136,14 +201,14 @@ static void _plot_var_1d(nct_var* var) {
   mainloop();
 }
 
-void nct_plot_var(nct_var* var0) {
+void nct_plot_var(nct_vset* vset, int varid) {
   if(SDL_Init(SDL_INIT_VIDEO)) {
     fprintf(stderr, "%sError in SDL_INIT:%s %s\n", nct_error_color, SDL_GetError(), nct_default_color);
     return;
   }
   SDL_Event event;
   while(SDL_PollEvent(&event));
-  var = var0;
+  var = vset->vars+varid;
   SDL_DisplayMode dm;
   if(SDL_GetCurrentDisplayMode(0, &dm)) {
     fprintf(stderr, "%sError in getting monitor size%s: %s\n", nct_error_color, SDL_GetError(), nct_default_color);
@@ -171,5 +236,4 @@ void nct_plot_var(nct_var* var0) {
   redraw(var);
 
   mainloop();
-  quit();
 }

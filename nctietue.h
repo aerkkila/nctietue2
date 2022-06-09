@@ -153,6 +153,7 @@ nct_vset* nct_vset_isel(nct_vset* vset, int dimid, size_t ind0, size_t ind1);
 int nct_get_dimid(nct_vset* vset, char* name);
 int nct_get_varid(nct_vset* vset, char* name);
 char* nct_get_att_text(nct_vset* vset, int varid, char* name);
+int nct_get_noncoord_varid(nct_vset* vset);
 
 nct_vset* nct_read_dim(nct_vset*, int dimid);
 nct_dim* nct_dimcpy_gd(nct_dim* dest, const nct_dim* src);
