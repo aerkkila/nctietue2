@@ -6,3 +6,5 @@ _minted-*
 kuva*
 *.so
 *.a
+tools/add_similars
+tools/nct_info
