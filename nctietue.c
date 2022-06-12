@@ -80,7 +80,7 @@ size_t nct_getlen(nct_vset* vset, int varid) {
 
 /*–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
  * define all oper-eq-functions for all types
- * using operations_and_types.h which defines all their combinations
+ * using nct_operations_and_types.h which defines all their combinations
  *––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––*/
 
 #define OPERATION(nctype, a, ctype, opername, oper)			\
@@ -91,7 +91,7 @@ size_t nct_getlen(nct_vset* vset, int varid) {
       ((ctype*)var->data)[i] oper value;				\
     return var;								\
   }
-#include "operations_and_types.h"
+#include "nct_operations_and_types.h"
 #undef OPERATION
 
 #define OPERATION(nctype, form, ctype, opername, oper)			\
@@ -100,7 +100,7 @@ size_t nct_getlen(nct_vset* vset, int varid) {
       ((ctype*)v0->data)[i] oper ((ctype*)arr)[i];			\
     return v0;								\
   }
-#include "operations_and_types.h"
+#include "nct_operations_and_types.h"
 #undef OPERATION
 
 /*Define arrays of the functions. NC_STRING has greatest index.
@@ -156,7 +156,7 @@ ALL_EQ_OPERATIONS
   vararr_##opername##_functions[nctype] = vararr_##opername##_##nctype;	\
   nct_var_##opername##_functions[nctype] = nct_var_##opername##_##nctype;
 void nct_init() {
-#include "operations_and_types.h"
+#include "nct_operations_and_types.h"
 }
 #undef OPERATION
 

@@ -59,8 +59,8 @@ extern int ncret;
 #define NCTVAR(vset,name) (vset).vars[nct_get_varid(&(vset),name)]
 #define NCTDIM(vset,name) (vset).dims[nct_get_dimid(&(vset),name)]
 
-#include "nct_png.h"
-#include "nct_sdl2.h"
+nct_vset* nct_open_png_gd(nct_vset* dest, char* name); //nct_png
+void nct_plot_var(nct_vset*, int); //nct_sdl2
 
 /*With this macro one can define functions for all nct_var types without repeating things.
   First define ONE_TYPE in a wanted way, then add ALL_TYPES then undef ONE_TYPE
@@ -105,7 +105,7 @@ extern int ncret;
   ONE_OPERATION(ne, !=)
 #endif
 
-/*All allowed combinations of types (except string) and operations are in "operations_and_types.h"*/
+/*All allowed combinations of types (except string) and operations are in "nct_operations_and_types.h"*/
 
 #define ONE_TYPE(nctype, ...) void nct_print_##nctype(void* arr, int i, int end);
 ALL_TYPES
@@ -118,14 +118,14 @@ void nct_print_vset(nct_vset* vs);
 size_t nct_getlen(nct_vset* vset, int varid);
 
 #define OPERATION(nctype, a, ctype, opername, b) nct_var* nct_var_##opername##_##nctype(nct_var*, void*);
-#include "operations_and_types.h"
+#include "nct_operations_and_types.h"
 #undef OPERATION
 #define ONE_OPERATION(opername, a) nct_var* nct_var_##opername(nct_var*, void*);
 ALL_EQ_OPERATIONS
 #undef ONE_OPERATION
 
 #define OPERATION(nctype, a, ctype, opername, b) nct_var* vararr_##opername##_##nctype(nct_var*, void*);
-#include "operations_and_types.h"
+#include "nct_operations_and_types.h"
 #undef OPERATION
 #define ONE_OPERATION(opername, a) nct_var* vararr_##opername(nct_var*, void*);
 ALL_EQ_OPERATIONS
