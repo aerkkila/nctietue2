@@ -7,5 +7,5 @@ kuva*
 *.so
 *.a
 nctietue.pc
-tools/add_similars
+tools/nct_add_similars
 tools/nct_info

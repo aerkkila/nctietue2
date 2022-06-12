@@ -26,7 +26,7 @@ uninstall:
 
 
 testi.out: testi.c
-	gcc -g -Wall -o $@ testi.c -lnctietue -lSDL2 -lpng -lnetcdf
+	gcc -g -Wall -o $@ testi.c `pkg-config --libs nctietue`
 
 gtktesti.out: nct_gtk.c
 	gcc -Wall -o $@ nct_gtk.c -DGTKTESTI `pkg-config --cflags --libs glib-2.0 gtk4 nctietue`
