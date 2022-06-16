@@ -53,7 +53,7 @@ void nct_print_var(nct_vset* vset, int varid, const char* indent) {
 	 nct_varname_color, var->name, nct_getlen(vset,varid), nct_default_color, var->iscoordinate? " (coordinate)": "",
 	 indent, var->ndims);
   for(int i=0; i<var->ndims; i++)
-    printf("%s(%zu), ", var->dimnames[i], var->dimlens[i]);
+    printf("%s(%zu), ", NCTVARDIM(*var,i).name, NCTVARDIM(*var,i).len);
   printf(")\n");
   printf("%s  [", indent);
   nct_print_var_data(var);
@@ -189,7 +189,7 @@ void* nct_minmax(nct_var* var, void* resultv) {
 }
 
 nct_var* nct_var_dropdim0(nct_var* var) {
-  size_t new_len = var->len / var->dimlens[0];
+  size_t new_len = var->len / NCTVARDIM(*var,0).len;
   var->data = realloc(var->data, new_len*var->size1);
   var->len = new_len;
   void* ptr = var->dimnames;
@@ -208,11 +208,11 @@ nct_var* nct_var_dropdim0(nct_var* var) {
 #define ONE_TYPE(nctype, a, ctype)					\
   nct_var* nct_varmean0_##nctype(nct_var* var)				\
   {									\
-    size_t new_len = var->len / var->dimlens[0];			\
+    size_t new_len = var->len / NCTVARDIM(*var,0).len;			\
     for(size_t i=0; i<new_len; i++) {					\
-      for(size_t j=1; j<var->dimlens[0]; j++)				\
+      for(size_t j=1; j<NCTVARDIM(*var,0).len; j++)			\
 	((ctype*)var->data)[i] += ((ctype*)var->data)[i+new_len*j];	\
-      ((ctype*)var->data)[i] /= var->dimlens[0];			\
+      ((ctype*)var->data)[i] /= NCTVARDIM(*var,0).len;			\
     }									\
     return nct_var_dropdim0(var);					\
   }
@@ -233,11 +233,11 @@ nct_var* nct_varmean0(nct_var* var) {
 #define ONE_TYPE(nctype, a, ctype)					\
   nct_var* nct_varnanmean0_##nctype(nct_var* var)			\
   {									\
-    size_t new_len = var->len / var->dimlens[0];			\
+    size_t new_len = var->len / NCTVARDIM(*var,0).len;			\
     for(size_t i=0; i<new_len; i++) {					\
       int count = 0;							\
       ctype new_value = 0;						\
-      for(size_t j=0; j<var->dimlens[0]; j++) {				\
+      for(size_t j=0; j<NCTVARDIM(*var,0).len; j++) {			\
 	ctype test = ((ctype*)var->data)[i+new_len*j];			\
 	if(test==test) {						\
 	  count++;							\
@@ -273,11 +273,11 @@ static nct_var* _nct_var_isel(nct_var* var, int dimid, size_t ind0, size_t ind1)
  FOUND:;
   size_t len_after = var->size1; //interval to step given coordinate
   for(int i=id+1; i<var->ndims; i++)
-    len_after *= var->dimlens[i];
-  size_t length_around = len_after * var->dimlens[id];
+    len_after *= NCTVARDIM(*var,i).len;
+  size_t length_around = len_after * NCTVARDIM(*var,id).len;
   size_t n_blocks = 1;
   for(int i=0; i<id; i++)
-    n_blocks *= var->dimlens[i];
+    n_blocks *= NCTVARDIM(*var,i).len;
   int blocklen = (ind1-ind0) * len_after;
   void* destp = var->data;
   void* srcp = var->data + len_after*ind0;
@@ -287,7 +287,7 @@ static nct_var* _nct_var_isel(nct_var* var, int dimid, size_t ind0, size_t ind1)
     srcp += length_around;
   }
   var->data = realloc(var->data, blocklen*n_blocks);
-  var->dimlens[id] = ind1-ind0;
+  //NCTVARDIM(*var,id).len = ind1-ind0; This is done at vset_isel when all vars are changed.
   var->len = blocklen / var->size1 * n_blocks;
   return var;
 }
@@ -391,6 +391,7 @@ nct_vset* nct_read_var_info(nct_vset *vset, int varid) {
   char name[512];
   NCFUNK(nc_inq_var, vset->ncid, varid, name, &xtype, &ndims, dimids, &nattrs);
   nct_var* dest = vset->vars+varid;
+  dest->super = vset;
   dest->name = strdup(name);
   dest->freeable_name = 1;
   dest->ndims = ndims;
@@ -399,10 +400,10 @@ nct_vset* nct_read_var_info(nct_vset *vset, int varid) {
   dest->dimids = (int*)(dest->dimlens + ndims);
   dest->nattrs = nattrs;
   dest->attrs = malloc(nattrs*sizeof(nct_att));
+  memcpy(dest->dimids, dimids, ndims*sizeof(int));
   for(int i=0; i<ndims; i++) {
     dest->dimnames[i] = vset->dims[dimids[i]].name;
     dest->dimlens[i] = vset->dims[dimids[i]].len;
-    dest->dimids[i] = dimids[i];
   }
   dest->xtype = xtype;
   dest->size1 = nctypelen(xtype);
@@ -498,6 +499,7 @@ void nct_link_vars_to_dimnames(nct_vset* vs) {
   }
 }
 
+#if 0
 /*does not copy the nct_var that src may point to*/
 nct_dim* nct_dimcpy_gd(nct_dim* dest, const nct_dim* src) {
   dest->name = strdup(src->name);
@@ -575,6 +577,7 @@ nct_vset* nct_vsetcpy(const nct_vset* src) {
   nct_vset* dest = malloc(sizeof(nct_vset));
   return nct_vsetcpy_gd(dest, src);
 }
+#endif
 
 #define ONE_TYPE(nctype,a,ctype) nct_vset* nct_vset_from_data_##nctype(nct_vset* p, ...) \
   {									\
@@ -590,8 +593,8 @@ nct_vset* nct_vsetcpy(const nct_vset* src) {
     for(int i=0; i<count; i++) {					\
       ctype* data = va_arg(ptr, ctype*);				\
       nct_simply_add_var(vset, data, nctype, 0, NULL, va_arg(ptr, char*)); \
-      }									\
-       va_end(ptr);							\
+    }									\
+    va_end(ptr);							\
     return vset;							\
   }
 ALL_TYPES_EXCEPT_STRING
@@ -738,6 +741,7 @@ nct_vset* nct_simply_add_var(nct_vset* vset, void* src, nc_type xtype,
 			     int ndims, int* dimids, char* name) {
   nct_var* var = vset->vars + vset->nvars;
   *var = (nct_var) {
+    .super = vset,
     .name = name,
     .freeable_name = 0,
     .iscoordinate = 0,

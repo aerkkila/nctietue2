@@ -3,14 +3,20 @@
 
 #include <netcdf.h>
 
-typedef struct {
+typedef struct nct_att nct_att;
+typedef struct nct_var nct_var;
+typedef struct nct_dim nct_dim;
+typedef struct nct_vset nct_vset;
+
+struct nct_att {
   char* name;
   char* value;
   unsigned freeable;
   nc_type xtype;
-} nct_att;
+};
 
-typedef struct {
+struct nct_var {
+  nct_vset* super;
   char* name;
   char freeable_name;
   char iscoordinate;
@@ -24,22 +30,22 @@ typedef struct {
   int size1;
   nc_type xtype;
   void* data;
-} nct_var;
+};
 
-typedef struct {
+struct nct_dim {
   char* name;
   char freeable_name;
   size_t len;
   nct_var* coordv;
-} nct_dim;
+};
 
-typedef struct {
+struct nct_vset {
   int ndims;
   nct_dim* dims;
   int nvars;
   nct_var* vars;
   int ncid;
-} nct_vset;
+};
 
 extern const char* nct_error_color;
 extern const char* nct_varset_color;
@@ -56,8 +62,9 @@ extern int ncret;
       asm("int $3");			\
     }					\
   } while(0)
-#define NCTVAR(vset,name) (vset).vars[nct_get_varid(&(vset),name)]
-#define NCTDIM(vset,name) (vset).dims[nct_get_dimid(&(vset),name)]
+#define NCTVAR(vset,name) ((vset).vars[nct_get_varid(&(vset),name)])
+#define NCTDIM(vset,name) ((vset).dims[nct_get_dimid(&(vset),name)])
+#define NCTVARDIM(var,dimnum) ((var).super->dims[(var).dimids[dimnum]])
 
 nct_vset* nct_open_png_gd(nct_vset* dest, char* name); //nct_png
 void nct_plot_var(nct_vset*, int); //nct_sdl2
