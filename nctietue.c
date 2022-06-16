@@ -776,36 +776,35 @@ char* nct_find_unique_varname(nct_vset* vset, char* initname) {
   return NULL;
 }
 
-nct_vset* nct_move_similar_var(nct_vset* vset0, nct_vset* vset, int varid) {
-  nct_var* var = vset->vars+varid;
-  char* new_varname = var->name;
-  int freeable_name;
-  for(int i=0; i<vset0->nvars; i++)
-    if(!strcmp(new_varname, vset0->vars[i].name)) {
-      if(!(new_varname = nct_find_unique_varname(vset0, new_varname)))
+nct_vset* nct_move_similar_var(nct_vset* dest, nct_vset* src, int varid) {
+  nct_var* srcvar = src->vars+varid;
+  char* new_varname = srcvar->name;
+  int freeable_name_dest = srcvar->freeable_name;
+  for(int i=0; i<dest->nvars; i++)
+    if(!strcmp(new_varname, dest->vars[i].name)) {
+      if(!(new_varname = nct_find_unique_varname(dest, new_varname)))
 	asm("int $3");
-      freeable_name = 1;
+      freeable_name_dest = 1;
       goto DONE;
     }
-  vset0->vars[vset0->nvars].freeable_name = var->freeable_name;
-  var->freeable_name = 0;
+  srcvar->freeable_name = 0;
  DONE:
-  nct_simply_add_var(vset0, var->data, var->xtype, var->ndims, var->dimids, new_varname);
-  vset0->vars[vset0->nvars-1].freeable_name = freeable_name;
-  var->data = NULL;
-  return vset0;
+  nct_simply_add_var(dest, srcvar->data, srcvar->xtype, srcvar->ndims, srcvar->dimids, new_varname);
+  dest->vars[dest->nvars-1].freeable_name = freeable_name_dest;
+  srcvar->data = NULL;
+  return dest;
 }
 
-nct_vset* nct_move_similar_vset(nct_vset* vset0, nct_vset* vset) {
+nct_vset* nct_move_similar_vset(nct_vset* dest, nct_vset* src) {
   int count = 0;
-  for(int v=0; v<vset->nvars; v++)
-    if(!vset->vars[v].iscoordinate)
+  for(int v=0; v<src->nvars; v++)
+    if(!src->vars[v].iscoordinate)
       count++;
-  vset0->vars = realloc(vset0->vars, (vset0->nvars+count)*sizeof(nct_var));
-  for(int v=0; v<vset->nvars; v++)
-    if(!vset->vars[v].iscoordinate)
-      nct_move_similar_var(vset0, vset, v);
-  return vset0;
+  dest->vars = realloc(dest->vars, (dest->nvars+count)*sizeof(nct_var));
+  for(int v=0; v<src->nvars; v++)
+    if(!src->vars[v].iscoordinate)
+      nct_move_similar_var(dest, src, v);
+  return dest;
 }
 
 nct_vset* nct_add_var_with_dimids(nct_vset* vset, void* src, nc_type xtype,
