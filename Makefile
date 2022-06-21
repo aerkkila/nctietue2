@@ -1,6 +1,6 @@
 include config.mk
 cfiles=nctietue2.c nct_png.c nct_sdl2.c
-hfiles=nct2.h nct_operations_and_types.h
+hfiles=nctietue2.h nct_operations_and_types.h
 
 libnctietue2.so: ${cfiles} ${hfiles}
 	gcc -Wall -shared -fpic -g3 -gdwarf-2 -o $@ ${cfiles} -Og
@@ -22,7 +22,7 @@ uninstall:
 
 
 
-testi.out: testi.c
+testi.out: testi.c ${hfiles}
 	gcc -g -Wall -o $@ testi.c `pkg-config --libs nctietue2`
 
 gtktesti.out: nct_gtk.c

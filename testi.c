@@ -1,35 +1,44 @@
-#include <nctietue.h>
+#include <nctietue2.h>
 #include <stdlib.h>
+#include <string.h>
+
+void t_create_and_write() {
+    int dimids[4], data0[202];
+    char *data1;
+    nct_vset vset = {0};
+    srand(1234);
+
+    nct_add_dim(&vset, nct_range_NC_FLOAT(-10, 10.11, 0.1), 202, NC_FLOAT, "xnimi");
+
+    for(int i=0; i<202; i++)
+	data0[i] = rand() % 32;
+    dimids[0] = 0;
+    nct_add_var_simply(&vset, data0, NC_INT, "data0", 1, dimids)->nonfreeable_data = 1;
+
+    nct_add_dim(&vset, nct_range_NC_FLOAT(24, 64.5, 0.5), 80, NC_FLOAT, "ynimi");
+
+    data1 = malloc(202*80);
+    for(int i=0; i<202*80; i++)
+	data1[i] = i/202 + 5*(i%202);
+    dimids[1] = 1;
+    nct_add_var_simply(&vset, data1, NC_BYTE, "data1", 2, dimids);
+
+    nct_print_vset(&vset);
+
+    nct_add_varatt_text(&NCTVAR(vset,"data1"), "numero nolla", strdup("Добро пожоловать"), 1);
+    nct_add_varatt_text(&NCTVAR(vset,"data1"), "numero yksi", "Tämä on tekstiä", 0);
+
+    dimids[0] = 1; dimids[1] = 0;
+    nct_add_var_simply(&vset, data1, NC_UBYTE, nct_find_unique_varname(&vset, "data"), 2, dimids)
+	-> freeable_name = 1;
+
+    nct_print_vset(&vset);
+
+    nct_write_ncfile(&vset, "testi.nc");
+    nct_free_vset(&vset);
+}
 
 int main(int argc, char** argv) {
-  int xdata[5] = {0};
-  nct_vset vset = {0};
-  nct_add_coord(&vset, xdata, 5, NC_INT, "x");
-  nct_print_vset(&vset);
-  vset.vars[0].data = NULL;
-  nct_free_vset(&vset);
-
-  nct_open_png_gd(&vset, "./kuva.png");
-  nct_print_vset(&vset);
-  nct_write_ncfile(&vset, "./kuva.nc");
-  nct_free_vset(&vset);
-
-  //nct_init();
-  nct_vset* vs = nct_read_ncfile("./kuva.nc");
-  nct_vset* uusi = nct_vsetcpy(vs);
-  vs->vars[2].name[2] = '9';
-
-  nct_add_coord(uusi, nct_range_NC_UBYTE(0,10,1), 10, NC_UBYTE, "z");
-  nct_vset_isel(uusi, nct_get_dimid(uusi, "y"), 100, 300);
-  nct_vset_isel(uusi, nct_get_dimid(uusi, "x"), 40, 300);
-  nct_print_vset(uusi);
-  nct_write_ncfile(uusi, "./kuva_rajattu.nc");
-
-  nct_plot_var(uusi->vars + nct_get_varid(uusi, "data"));
-
-  nct_free_vset(vs);
-  nct_free_vset(uusi);
-  free(uusi);
-  free(vs);
-  return 0;
+    t_create_and_write();
+    return 0;
 }

@@ -1,3 +1,7 @@
+prefix=/usr
+includedir=${prefix}/include
+libdir=${prefix}/lib
+bindir=${prefix}/bin
 
 Name: nctietue2
 Description: Interface to netcdf library

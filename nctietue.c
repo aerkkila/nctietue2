@@ -1,20 +1,4 @@
 
-#define ONE_TYPE(nctype, form, ctype)				\
-    void nct_print_##nctype(void* arr, int i, int end) {	\
-	for(; i<end; i++)					\
-	    printf("%"#form", ", ((ctype*)arr)[i]);		\
-    }
-ALL_TYPES
-#undef ONE_TYPE
-
-#define ONE_TYPE(nctype, ...) [nctype]=nct_print_##nctype,
-void (*printfunctions[])(void*, int, int) = { ALL_TYPES };
-#undef ONE_TYPE
-
-#define ONE_TYPE(nctype, form, ctype) [nctype]=#ctype,
-char* type_names[] = { ALL_TYPES };
-#undef ONE_TYPE
-
 #define OPERATION(nctype, a, ctype, opername, oper)			\
     nct_var* nct_var_##opername##_##nctype(nct_var* var, void* vvalue)	\
     {									\
@@ -92,106 +76,6 @@ void nct_init() {
 }
 #undef OPERATION
 
-#define ONE_TYPE(nctype, b, ctype)				\
-    void* nct_minmax_##nctype(nct_var* var, void* resultv)	\
-    {								\
-	ctype maxval, minval, *result=resultv;			\
-	maxval = minval = ((ctype*)var->data)[0];		\
-	for(int i=1; i<var->len; i++)				\
-	    if(maxval < ((ctype*)var->data)[i])			\
-		maxval = ((ctype*)var->data)[i];		\
-	    else if(minval > ((ctype*)var->data)[i])		\
-		minval = ((ctype*)var->data)[i];		\
-	result[0] = minval;					\
-	result[1] = maxval;					\
-	return result;						\
-    }
-ALL_TYPES_EXCEPT_STRING
-#undef ONE_TYPE
-
-#define ONE_TYPE(nctype, a, b) [nctype]=nct_minmax_##nctype,
-void* (*minmax[])(nct_var*, void*) = { ALL_TYPES_EXCEPT_STRING };
-#undef ONE_TYPE
-
-#define ONE_TYPE(nctype, a, ctype)					\
-    nct_var* nct_varmean0_##nctype(nct_var* var)			\
-    {									\
-	size_t new_len = var->len / NCTVARDIM(*var,0).len;		\
-	for(size_t i=0; i<new_len; i++) {				\
-	    for(size_t j=1; j<NCTVARDIM(*var,0).len; j++)		\
-		((ctype*)var->data)[i] += ((ctype*)var->data)[i+new_len*j]; \
-	    ((ctype*)var->data)[i] /= NCTVARDIM(*var,0).len;		\
-	}								\
-	return nct_var_dropdim0(var);					\
-    }
-ALL_TYPES_EXCEPT_STRING
-#undef ONE_TYPE
-
-#define ONE_TYPE(nctype, a, b) [nctype]=nct_varmean0_##nctype,
-nct_var* (*varmean0[])(nct_var*) =
-{
-    ALL_TYPES_EXCEPT_STRING
-};
-#undef ONE_TYPE
-
-#define ONE_TYPE(nctype, a, ctype)				\
-    nct_var* nct_varnanmean0_##nctype(nct_var* var)		\
-    {								\
-	size_t new_len = var->len / NCTVARDIM(*var,0).len;	\
-	for(size_t i=0; i<new_len; i++) {			\
-	    int count = 0;					\
-	    ctype new_value = 0;				\
-	    for(size_t j=0; j<NCTVARDIM(*var,0).len; j++) {	\
-		ctype test = ((ctype*)var->data)[i+new_len*j];	\
-		if(test==test) {				\
-		    count++;					\
-		    new_value += test;				\
-		}						\
-	    }							\
-	    ((ctype*)var->data)[i] = new_value/count;		\
-	}							\
-	return nct_var_dropdim0(var);				\
-    }
-ALL_TYPES_EXCEPT_STRING
-#undef ONE_TYPE
-
-#define ONE_TYPE(nctype, a, b) [nctype]=nct_varnanmean0_##nctype,
-nct_var* (*varnanmean0[])(nct_var*) =
-{
-    ALL_TYPES_EXCEPT_STRING
-};
-#undef ONE_TYPE
-
-static nct_var* _nct_var_isel(nct_var* var, int dimid, size_t ind0, size_t ind1) {
-    int id;
-    for(int i=0; i<var->ndims; i++)
-	if(var->dimids[i] == dimid) {
-	    id = i;
-	    goto FOUND;
-	}
-    return var;
-FOUND:;
-    size_t len_after = var->size1; //interval to step given coordinate
-    for(int i=id+1; i<var->ndims; i++)
-	len_after *= NCTVARDIM(*var,i).len;
-    size_t length_around = len_after * NCTVARDIM(*var,id).len;
-    size_t n_blocks = 1;
-    for(int i=0; i<id; i++)
-	n_blocks *= NCTVARDIM(*var,i).len;
-    int blocklen = (ind1-ind0) * len_after;
-    void* destp = var->data;
-    void* srcp = var->data + len_after*ind0;
-    for(int i=0; i<n_blocks; i++) {
-	memmove(destp, srcp, blocklen);
-	destp += blocklen;
-	srcp += length_around;
-    }
-    var->data = realloc(var->data, blocklen*n_blocks);
-    //NCTVARDIM(*var,id).len = ind1-ind0; This is done at vset_isel when all vars are changed.
-    var->len = blocklen / var->size1 * n_blocks;
-    return var;
-}
-
 #if 0
 /*does not copy the nct_var that src may point to*/
 nct_dim* nct_dimcpy_gd(nct_dim* dest, const nct_dim* src) {
@@ -267,16 +151,3 @@ nct_dim* nct_to_coord(void* arr, size_t len, nc_type xtype, char* name) {
     nct_to_coord_gd(dest, arr, len, xtype, name);
 }
 #endif
-
-#define ONE_TYPE(nctype,form,ctype)				\
-    ctype* nct_range_##nctype(ctype i0, ctype i1, ctype gap) {	\
-	size_t len = (i1-i0)/gap;				\
-	while(i0+len*gap < i1) len++;				\
-	ctype* dest = malloc(len*sizeof(ctype));		\
-	ctype num = i0-gap;					\
-	for(size_t i=0; i<len; i++)				\
-	    dest[i] = num+=gap;					\
-	return dest;						\
-    }
-ALL_TYPES_EXCEPT_STRING
-#undef ONE_TYPE
