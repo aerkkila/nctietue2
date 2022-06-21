@@ -1,35 +1,32 @@
 include config.mk
-cfiles=nctietue.c nct_png.c nct_sdl2.c
-hfiles=nctietue.h nct_operations_and_types.h
+cfiles=nctietue2.c nct_png.c nct_sdl2.c
+hfiles=nct2.h nct_operations_and_types.h
 
-libnctietue.so: ${cfiles} ${hfiles}
+libnctietue2.so: ${cfiles} ${hfiles}
 	gcc -Wall -shared -fpic -g3 -gdwarf-2 -o $@ ${cfiles} -Og
 
-libnctietue0.so: ${cfiles} ${hfiles}
-	gcc -Wall -shared -fpic -o $@ ${cfiles} -O3
+nctietue2.pc: nctietue2.pc.1 config.mk
+	cat config.mk nctietue2.pc.1 > nctietue2.pc
 
-nctietue.pc: nctietue.pc.1 config.mk
-	cat config.mk nctietue.pc.1 > nctietue.pc
-
-install: libnctietue.so nctietue.pc ${hfiles}
+install: libnctietue2.so nctietue2.pc ${hfiles}
 	cp ${hfiles} ${includedir}
-	cp libnctietue.so ${libdir}
-	cp nctietue.pc /usr/lib/pkgconfig/
+	cp libnctietue2.so ${libdir}
+	cp nctietue2.pc /usr/lib/pkgconfig/
 
 uninstall:
-	rm ${libdir}/libnctietue.so
+	rm ${libdir}/libnctietue2.so
 	rm $(addprefix ${includedir}/, ${hfiles})
-	rm /usr/lib/pkgconfig/nctietue.pc
+	rm /usr/lib/pkgconfig/nctietue2.pc
 
 .PHONY: uninstall
 
 
 
 testi.out: testi.c
-	gcc -g -Wall -o $@ testi.c `pkg-config --libs nctietue`
+	gcc -g -Wall -o $@ testi.c `pkg-config --libs nctietue2`
 
 gtktesti.out: nct_gtk.c
-	gcc -Wall -o $@ nct_gtk.c -DGTKTESTI `pkg-config --cflags --libs glib-2.0 gtk4 nctietue`
+	gcc -Wall -o $@ nct_gtk.c -DGTKTESTI `pkg-config --cflags --libs glib-2.0 gtk4 nctietue2`
 
 gtktesti: gtktesti.out
 	./gtktesti.out
