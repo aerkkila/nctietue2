@@ -61,6 +61,6 @@ nct_vset* nct_open_png_gd(nct_vset* dest, char* name) {
     nct_add_dim(dest, nct_range_NC_UINT64(0,height,1), height, NC_UINT64, "y");
 
   int dimids[] = {1,0};
-  nct_add_var_simply(dest, data, NC_UBYTE, "data", 2, dimids);
+  nct_add_var(dest, data, NC_UBYTE, "data", 2, dimids);
   return dest;
 }

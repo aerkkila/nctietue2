@@ -42,7 +42,7 @@ nct_var* nct_add_dim(nct_vset* vset, void* src, size_t len, nc_type xtype, char*
     }
     id = vset->ndims++;
     if(src)
-	(vset->dims[id] = nct_add_var_simply(vset, src, xtype, name, 1, &id))->len = len;
+	(vset->dims[id] = nct_add_var(vset, src, xtype, name, 1, &id))->len = len;
     else {
 	*(vset->dims[id] = calloc(1,sizeof(nct_var))) = (nct_var) {
 	    .super = vset,
@@ -59,10 +59,10 @@ failed:
 
 /* dimids can contain negative values indicating dimension to be created
  * dimnames can contain non-existent names that will be created if dimids==NULL */
-nct_var* nct_add_var(nct_vset* vset, void* src, nc_type xtype, char* name,
-		      int ndims, int* dimids, size_t* dimlens, char** dimnames) {
+nct_var* nct_add_var_(nct_vset* vset, void* src, nc_type xtype, char* name,
+			  int ndims, int* dimids, size_t* dimlens, char** dimnames) {
     if(dimids)
-	return nct_add_var_with_dimids(vset, src, xtype, name, ndims, dimids, dimnames, dimlens);
+	return nct_add_var_dimids(vset, src, xtype, name, ndims, dimids, dimlens, dimnames);
     int ids[ndims];
     for(int i=0; i<ndims; i++)
 	for(int j=0; j<vset->ndims; j++) {
@@ -72,10 +72,10 @@ nct_var* nct_add_var(nct_vset* vset, void* src, nc_type xtype, char* name,
 	    }
 	    ids[i] = -1; //new dim
 	}
-    return nct_add_var_with_dimids(vset, src, xtype, name, ndims, ids, dimnames, dimlens);
+    return nct_add_var_dimids(vset, src, xtype, name, ndims, ids, dimlens, dimnames);
 }
 
-nct_var* nct_add_var_simply(nct_vset* vset, void* src, nc_type xtype, char* name,
+nct_var* nct_add_var(nct_vset* vset, void* src, nc_type xtype, char* name,
 			    int ndims, int* dimids) {
     if(vset->varcapacity < vset->nvars+1)
 	if(!(vset->vars=realloc(vset->vars, (vset->varcapacity=vset->nvars+3)*sizeof(void*))))
@@ -96,14 +96,14 @@ nct_var* nct_add_var_simply(nct_vset* vset, void* src, nc_type xtype, char* name
     vset->nvars++;
     return var;
 failed:
-    fprintf(stderr, "(re/m)alloc failed in nct_add_var_simply\n");
+    fprintf(stderr, "(re/m)alloc failed in nct_add_var\n");
     return NULL;
 }
 
 /* This is used like nct_add_var but dimids must not be NULL.
-   If all dimids are given (non-negative), then this is like nct_add_var_simply. */
+   If all dimids are given (non-negative), then this is like nct_add_var. */
 nct_var* nct_add_var_with_dimids(nct_vset* vset, void* src, nc_type xtype, char* name,
-				  int ndims, int* dimids, char** dimnames, size_t* dimlens) {
+				  int ndims, int* dimids, size_t* dimlens, char** dimnames) {
     int new_dims = 0;
     for(int i=0; i<ndims; i++)
 	if(dimids[i]<0) new_dims++;
@@ -114,7 +114,7 @@ nct_var* nct_add_var_with_dimids(nct_vset* vset, void* src, nc_type xtype, char*
 	    if(dimids[i]<0)
 		nct_add_dim(vset, NULL, dimlens[i], NC_INT, dimnames[i]);
     }
-    return nct_add_var_simply(vset, src, xtype, name, ndims, dimids);
+    return nct_add_var(vset, src, xtype, name, ndims, dimids);
 }
 
 nct_vset* nct_assign_shape(nct_vset* vset, ...) {
@@ -307,7 +307,7 @@ nct_vset* nct_move_var_tosimilar(nct_vset* dest, nct_var* srcvar) {
 	}
     srcvar->freeable_name = 0;
 done:
-    nct_add_var_simply(dest, srcvar->data, srcvar->xtype, new_varname, srcvar->ndims, srcvar->dimids);
+    nct_add_var(dest, srcvar->data, srcvar->xtype, new_varname, srcvar->ndims, srcvar->dimids);
     dest->vars[dest->nvars-1]->freeable_name = freeable_name_dest;
     srcvar->nonfreeable_data = 1;
     return dest;

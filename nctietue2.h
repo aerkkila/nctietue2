@@ -157,9 +157,9 @@ void      nct_plot_var(nct_vset*, int);                // nct_sdl2
 
 void      nct_add_varatt_text(nct_var* var, char* name, char* value, unsigned freeable);
 nct_var*  nct_add_dim(nct_vset*, void*, size_t, nc_type, char*);
-nct_var*  nct_add_var(nct_vset*, void*, nc_type, char*, int, int*, size_t*, char**);
-nct_var*  nct_add_var_simply(nct_vset*, void*, nc_type, char*, int, int*);
-nct_var*  nct_add_var_with_dimids(nct_vset*, void*, nc_type, char*, int, int*, char**, size_t*);
+nct_var*  nct_add_var(nct_vset*, void*, nc_type, char*, int, int*);
+nct_var*  nct_add_var_(nct_vset*, void*, nc_type, char*, int, int*, size_t*, char**);
+nct_var*  nct_add_var_dimids(nct_vset*, void*, nc_type, char*, int, int*, size_t*, char**);
 nct_vset* nct_assign_shape(nct_vset*, ...);
 char*     nct_find_unique_varname(nct_vset* vset, char* initname);
 void      nct_free_att(nct_att*);
