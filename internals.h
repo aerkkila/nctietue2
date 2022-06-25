@@ -7,7 +7,7 @@ static void _nct_read_dim(nct_vset* vset, int dimid) {
     nct_var** v = vset->dims + dimid;
     NCFUNK(nc_inq_dim, vset->ncid, dimid, name, &len);
     if((varid=nct_get_varid(vset, name)) >= 0) {
-	*v = vset->vars + varid;
+	*v = vset->vars[varid];
 	return;
     }
     *v = calloc(1, sizeof(nct_var));
@@ -26,7 +26,7 @@ static nct_vset* _nct_read_var_info(nct_vset *vset, int varid) {
     size_t len;
     char name[512];
     NCFUNK(nc_inq_var, vset->ncid, varid, name, &xtype, &ndims, dimids, &natts);
-    nct_var* dest = vset->vars+varid;
+    nct_var* dest = vset->vars[varid];
     dest->super            = vset;
     dest->name             = strdup(name);
     dest->freeable_name    = 1;

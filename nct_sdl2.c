@@ -207,7 +207,7 @@ void nct_plot_var(nct_vset* vset, int varid) {
     }
     SDL_Event event;
     while(SDL_PollEvent(&event));
-    var = vset->vars+varid;
+    var = vset->vars[varid];
     SDL_DisplayMode dm;
     if(SDL_GetCurrentDisplayMode(0, &dm)) {
 	fprintf(stderr, "%sError in getting monitor size%s: %s\n", nct_error_color, SDL_GetError(), nct_default_color);

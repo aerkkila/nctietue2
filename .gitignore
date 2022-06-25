@@ -6,6 +6,7 @@ _minted-*
 kuva*
 *.so
 *.a
+*.nc
 nctietue2.pc
 tools/nct_add_similars
 tools/nct_info

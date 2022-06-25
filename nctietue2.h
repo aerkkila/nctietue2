@@ -34,10 +34,10 @@ struct nct_var {
 struct nct_vset {
     int nvars;
     int varcapacity;
-    nct_var* vars;
+    nct_var** vars;
     int ndims;
     int dimcapacity;
-    nct_var** dims; // points to same name variable or is allocated to heap
+    nct_var** dims; // points to same name variable if available
     int natts;
     int attcapacity;
     nct_att* atts;
@@ -60,7 +60,7 @@ extern       int   nct_ncret;
 	}					\
     } while(0)
 #define NCTDIM(vset,name) (*(vset).dims[nct_get_dimid(&(vset),name)])
-#define NCTVAR(vset,name) ((vset).vars[nct_get_varid(&(vset),name)])
+#define NCTVAR(vset,name) (*(vset).vars[nct_get_varid(&(vset),name)])
 #define NCTVARDIM(var,dimnum) (*(var).super->dims[(var).dimids[dimnum]])
 
 /* With this macro one can define functions for all nct_var types without repeating things.
@@ -166,6 +166,7 @@ void      nct_free_att(nct_att*);
 void      nct_free_var(nct_var*);
 void      nct_free_vset(nct_vset*);
 int       nct_get_dimid(nct_vset*, char*);
+int       nct_get_id_thisdim(nct_var*);
 int       nct_get_id_thisvar(nct_var*);
 char*     nct_get_varatt_text(nct_var*, char*);
 int       nct_get_varid(nct_vset*, char*);
