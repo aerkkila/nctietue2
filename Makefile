@@ -1,9 +1,9 @@
 include config.mk
-cfiles=nctietue2.c nct_png.c nct_sdl2.c
+cfiles=nctietue2.c internals.h nct_png.c nct_sdl2.c
 hfiles=nctietue2.h nct_operations_and_types.h
 
 libnctietue2.so: ${cfiles} ${hfiles}
-	gcc -Wall -shared -fpic -g3 -gdwarf-2 -o $@ ${cfiles} -Og
+	gcc -Wall -shared -fpic -g3 -gdwarf-2 -o $@ nctietue2.c -Og
 
 nctietue2.pc: nctietue2.pc.1 config.mk
 	cat config.mk nctietue2.pc.1 > nctietue2.pc

@@ -5,6 +5,8 @@
 #include <stdint.h>
 #include "nctietue2.h"
 #include "internals.h"
+#include "nct_png.c"
+#include "nct_sdl2.c"
 
 const char* nct_error_color   = "\033[1;31m";
 const char* nct_varset_color  = "\033[1;93m";
@@ -36,7 +38,7 @@ nct_var* nct_add_dim(nct_vset* vset, void* src, size_t len, nc_type xtype, char*
     void* vp;
     int id;
     if(vset->dimcapacity < vset->ndims+1) {
-	if(!(vp = realloc(vset->dims, (vset->dimcapacity=vset->ndims+3)*sizeof(nct_var*))))
+	if(!(vp = realloc(vset->dims, (vset->dimcapacity=vset->ndims+3)*sizeof(void*))))
 	    goto failed;
 	vset->dims = vp;
     }
@@ -57,26 +59,8 @@ failed:
     return NULL;
 }
 
-/* dimids can contain negative values indicating dimension to be created
- * dimnames can contain non-existent names that will be created if dimids==NULL */
-nct_var* nct_add_var_(nct_vset* vset, void* src, nc_type xtype, char* name,
-			  int ndims, int* dimids, size_t* dimlens, char** dimnames) {
-    if(dimids)
-	return nct_add_var_dimids(vset, src, xtype, name, ndims, dimids, dimlens, dimnames);
-    int ids[ndims];
-    for(int i=0; i<ndims; i++)
-	for(int j=0; j<vset->ndims; j++) {
-	    if(!strcmp(vset->dims[j]->name, dimnames[i])) {
-		ids[i] = j;
-		break;
-	    }
-	    ids[i] = -1; //new dim
-	}
-    return nct_add_var_dimids(vset, src, xtype, name, ndims, ids, dimlens, dimnames);
-}
-
 nct_var* nct_add_var(nct_vset* vset, void* src, nc_type xtype, char* name,
-			    int ndims, int* dimids) {
+		     int ndims, int* dimids) {
     if(vset->varcapacity < vset->nvars+1)
 	if(!(vset->vars=realloc(vset->vars, (vset->varcapacity=vset->nvars+3)*sizeof(void*))))
 	    goto failed;
@@ -100,9 +84,27 @@ failed:
     return NULL;
 }
 
+/* dimids can contain negative values indicating dimension to be created
+ * dimnames can contain non-existent names that will be created if dimids==NULL */
+nct_var* nct_add_var_(nct_vset* vset, void* src, nc_type xtype, char* name,
+			  int ndims, int* dimids, size_t* dimlens, char** dimnames) {
+    if(dimids)
+	return nct_add_var_dimids(vset, src, xtype, name, ndims, dimids, dimlens, dimnames);
+    int ids[ndims];
+    for(int i=0; i<ndims; i++)
+	for(int j=0; j<vset->ndims; j++) {
+	    if(!strcmp(vset->dims[j]->name, dimnames[i])) {
+		ids[i] = j;
+		break;
+	    }
+	    ids[i] = -1; //new dim
+	}
+    return nct_add_var_dimids(vset, src, xtype, name, ndims, ids, dimlens, dimnames);
+}
+
 /* This is used like nct_add_var but dimids must not be NULL.
    If all dimids are given (non-negative), then this is like nct_add_var. */
-nct_var* nct_add_var_with_dimids(nct_vset* vset, void* src, nc_type xtype, char* name,
+nct_var* nct_add_var_dimids(nct_vset* vset, void* src, nc_type xtype, char* name,
 				  int ndims, int* dimids, size_t* dimlens, char** dimnames) {
     int new_dims = 0;
     for(int i=0; i<ndims; i++)
@@ -418,8 +420,8 @@ nct_vset* nct_read_ncfile_info_gd(nct_vset* dest, const char* restrict filename)
     NCFUNK(nc_inq_ndims, ncid, &(dest->ndims));
     NCFUNK(nc_inq_nvars, ncid, &(dest->nvars));
     dest->ncid = ncid;
-    dest->dims = calloc((dest->dimcapacity=dest->ndims+1), sizeof(nct_var*));
-    dest->vars = calloc((dest->varcapacity=dest->nvars+3), sizeof(nct_var));
+    dest->dims = calloc((dest->dimcapacity=dest->ndims+1), sizeof(void*));
+    dest->vars = calloc((dest->varcapacity=dest->nvars+3), sizeof(void*));
     for(int i=0; i<dest->nvars; i++)
 	_nct_read_var_info(dest, i);
     for(int i=0; i<dest->ndims; i++)
@@ -440,7 +442,11 @@ nct_var* nct_var_dropdim0(nct_var* var) {
     return var;
 }
 
-nct_var* nct_varcpy_similar_gd(nct_var* dest, nct_var* src) {
+nct_var* nct_varcpy(nct_var* src) {
+    return nct_varcpy_gd(calloc(1,sizeof(nct_var)), src);
+}
+
+nct_var* nct_varcpy_gd(nct_var* dest, nct_var* src) {
     dest->super            = src->super;
     dest->name             = strdup(src->name);
     dest->freeable_name    = 1;
@@ -530,23 +536,29 @@ nct_vset* nct_vset_isel(nct_vset* vset, int dimid, size_t ind0, size_t ind1) {
 }
 
 nct_vset* nct_vsetcpy(const nct_vset* src) {
-    nct_vset* dest = malloc(sizeof(nct_vset));
+    nct_vset* dest = calloc(1, sizeof(nct_vset));
     return nct_vsetcpy_gd(dest, src);
 }
 
 nct_vset* nct_vsetcpy_gd(nct_vset* dest, const nct_vset* src) {
     /*vars*/
     dest->nvars = src->nvars;
-    dest->vars = malloc((dest->varcapacity=src->nvars+1)*sizeof(nct_var));
-    for(int i=0; i<dest->nvars; i++) {
-	nct_varcpy_similar_gd(dest->vars[i], src->vars[i]);
-	dest->vars[i]->super = dest;
-    }
+    dest->vars = malloc((dest->varcapacity=src->nvars+1)*sizeof(void*));
+    for(int i=0; i<dest->nvars; i++)
+	(dest->vars[i] = nct_varcpy(src->vars[i])) -> super = dest;
     /*dims*/
+    dest->dims = malloc((dest->dimcapacity=src->ndims+1)*sizeof(void*));
+    dest->ndims = 0;
+    for(int i=0; i<src->ndims; i++) {
+	int id = nct_get_id_thisvar(src->dims[i]);
+	if(id < 0) {
+	    src->vars[id]->len = nct_get_varlen(src->vars[id]);
+	    nct_add_dim(dest, src->vars[id]->data, src->vars[id]->len, src->vars[id]->xtype,
+			strdup(src->vars[id]->name))->freeable_name = 1;
+	} else
+	    dest->dims[i] = dest->vars[id];
+    }
     dest->ndims = src->ndims;
-    dest->dims = malloc((dest->dimcapacity=dest->ndims+1)*sizeof(nct_var*));
-    for(nct_var** sd=src->dims; sd<src->dims+src->ndims; sd++)
-	nct_add_dim(dest, (*sd)->data, (*sd)->len, (*sd)->xtype, strdup((*sd)->name))->freeable_name = 1;
     return dest;
 }
 

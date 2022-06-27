@@ -7,7 +7,7 @@ static void _nct_read_dim(nct_vset* vset, int dimid) {
     nct_var** v = vset->dims + dimid;
     NCFUNK(nc_inq_dim, vset->ncid, dimid, name, &len);
     if((varid=nct_get_varid(vset, name)) >= 0) {
-	*v = vset->vars[varid];
+	(*v = vset->vars[varid]) -> len = len;
 	return;
     }
     *v = calloc(1, sizeof(nct_var));
@@ -26,7 +26,7 @@ static nct_vset* _nct_read_var_info(nct_vset *vset, int varid) {
     size_t len;
     char name[512];
     NCFUNK(nc_inq_var, vset->ncid, varid, name, &xtype, &ndims, dimids, &natts);
-    nct_var* dest = vset->vars[varid];
+    nct_var* dest = vset->vars[varid] = calloc(1, sizeof(nct_var));
     dest->super            = vset;
     dest->name             = strdup(name);
     dest->freeable_name    = 1;
@@ -36,7 +36,7 @@ static nct_vset* _nct_read_var_info(nct_vset *vset, int varid) {
     dest->natts            = natts;
     dest->attcapacity      = natts;
     dest->atts             = malloc(dest->attcapacity*sizeof(nct_att));
-    dest->len              = -1;
+    dest->len              = 0;
     dest->xtype            = xtype;
     dest->nonfreeable_data = 0;
     dest->data             = NULL;
@@ -46,7 +46,7 @@ static nct_vset* _nct_read_var_info(nct_vset *vset, int varid) {
 	NCFUNK(nc_inq_attname, vset->ncid, varid, i, name);
 	NCFUNK(nc_inq_att, vset->ncid, varid, name, &xtype, &len);
 	att->name     = strdup(name);
-	att->value    = malloc(len*nctypelen(xtype) + xtype==NC_STRING);
+	att->value    = malloc(len*nctypelen(xtype) + (xtype==NC_STRING));
 	att->xtype    = xtype;
 	att->len      = len;
 	att->freeable = 3;

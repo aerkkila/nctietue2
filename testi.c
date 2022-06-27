@@ -1,6 +1,7 @@
 #include <nctietue2.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 void t_create_and_write() {
     int dimids[4], data0[202];
@@ -38,9 +39,28 @@ void t_create_and_write() {
 
     nct_write_ncfile(&vset, "testi.nc");
     nct_free_vset(&vset);
+    printf("\033[7;1mt_create_and_write valmis\033[0m\n");
+}
+
+void t_read_and_copy() {
+    nct_vset a={0}, b={0};
+    nct_read_ncfile_gd(&a, "testi.nc");
+    printf(" -----------a---------- \n"
+	   " ––––––––––aaa––––––––– \n");
+    nct_print_vset(&a);
+    printf(" -----------b---------- \n"
+	   " ––––––––––bbb––––––––– \n");
+    nct_vsetcpy_gd(&b, &a);
+    nct_print_vset(&b);
+    printf(" ---------------------- \n"
+	   " –––––––––––––––––––––– \n");
+    nct_write_ncfile(&b, "testi1.nc");
+    nct_free_vset(&a);
+    nct_free_vset(&b);
 }
 
 int main(int argc, char** argv) {
     t_create_and_write();
+    t_read_and_copy();
     return 0;
 }
