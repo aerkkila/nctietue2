@@ -9,10 +9,10 @@
 #include "nct_sdl2.c"
 
 const char* nct_error_color   = "\033[1;31m";
-const char* nct_varset_color  = "\033[1;93m";
+const char* nct_varset_color  = "\033[1;35m";
 const char* nct_varname_color = "\033[92m";
 const char* nct_dimname_color = "\033[44;92m";
-const char* nct_type_color    = "\033[35m";
+const char* nct_type_color    = "\033[93m";
 const char* nct_default_color = "\033[0m";
 int         nct_ncret;
 
@@ -439,6 +439,8 @@ nct_vset* nct_read_ncfile_info(const char* restrict filename) {
 }
 
 nct_var* nct_var_dropdim0(nct_var* var) {
+    if(!var->ndims)
+	return var;
     size_t new_len = nct_get_varlen(var) / NCTVARDIM(*var,0).len;
     if(!(var->nonfreeable_data))
 	var->data = realloc(var->data, new_len*nctypelen(var->xtype));
