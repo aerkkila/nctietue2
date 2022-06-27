@@ -52,15 +52,42 @@ void t_read_and_copy() {
 	   " ––––––––––bbb––––––––– \n");
     nct_vsetcpy_gd(&b, &a);
     nct_print_vset(&b);
-    printf(" ---------------------- \n"
-	   " –––––––––––––––––––––– \n");
     nct_write_ncfile(&b, "testi1.nc");
     nct_free_vset(&a);
     nct_free_vset(&b);
+    printf("\033[7;1mt_read_and_copy valmis\033[0m\n");
+}
+
+void t_operations() {
+    nct_vset a    = {0};
+    float af[8]   = {14, 1, -31.1, 20, 0, 72.1,  -60.8, 32.99};
+    double ad[8]  = {14, 1, -31.1, 20, 0, 0.0/0, -60.8, 32.99};
+    int ai[8]     = {14, 1, -31,   20, 0, 72,    -61,   33};
+    char* nimet[] = {"Xäöþ", "Yöξκ"};
+    size_t pit[]  = {4, 2};
+    int dimids[]  = {0, 1};
+    nct_add_var_(&a, af, NC_FLOAT,  "liukuluku", 2, NULL,   pit,  nimet)->nonfreeable_data = 1;
+    nct_add_var_(&a, ai, NC_INT,    "kokonluku", 2, NULL,   NULL, nimet)->nonfreeable_data = 1;
+    nct_add_var_(&a, ad, NC_DOUBLE, "epäluku",   2, dimids, NULL, NULL)->nonfreeable_data = 1;
+    nct_print_vset(&a);
+    nct_vardup(&NCTVAR(a, "liukuluku"), "dropliuku");
+    nct_vardup(&NCTVAR(a, "kokonluku"), NULL);
+    nct_var_dropdim0(&NCTVAR(a, "dropliuku"));
+    //nct_varmean0(&NCTVAR(a, "liukuluku2"));
+    //nct_varmean0(&NCTVAR(a, "kokonluku"));
+    //nct_vardup(&NCTVAR(a, "epäluku"))->name = "epäluku2";
+    //nct_varmean0(&NCTVAR(a, "epäluku"));
+    //nct_varnanmean0(&NCTVAR(a, "epäluku2"));
+    printf("––––––––––––––––––––");
+    nct_print_vset(&a);
+    nct_free_vset(&a);
+    
+    printf("\033[7;1mt_operations valmis\033[0m\n");
 }
 
 int main(int argc, char** argv) {
-    t_create_and_write();
-    t_read_and_copy();
+    //t_create_and_write();
+    //t_read_and_copy();
+    t_operations();
     return 0;
 }

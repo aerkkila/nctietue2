@@ -92,13 +92,7 @@ nct_var* nct_add_var_(nct_vset* vset, void* src, nc_type xtype, char* name,
 	return nct_add_var_dimids(vset, src, xtype, name, ndims, dimids, dimlens, dimnames);
     int ids[ndims];
     for(int i=0; i<ndims; i++)
-	for(int j=0; j<vset->ndims; j++) {
-	    if(!strcmp(vset->dims[j]->name, dimnames[i])) {
-		ids[i] = j;
-		break;
-	    }
-	    ids[i] = -1; //new dim
-	}
+	ids[i] = nct_get_dimid(vset, dimnames[i]); // new dimension is -1
     return nct_add_var_dimids(vset, src, xtype, name, ndims, ids, dimlens, dimnames);
 }
 
@@ -113,8 +107,10 @@ nct_var* nct_add_var_dimids(nct_vset* vset, void* src, nc_type xtype, char* name
 	if(vset->dimcapacity < vset->ndims+new_dims)
 	    vset->dims = realloc(vset->dims, (vset->dimcapacity=vset->ndims+new_dims+1)*sizeof(nct_var*));
 	for(int i=0; i<ndims; i++)
-	    if(dimids[i]<0)
-		nct_add_dim(vset, NULL, dimlens[i], NC_INT, dimnames[i]);
+	    if(dimids[i]<0) {
+		nct_add_dim(vset, NULL, dimlens[i], NC_NAT, dimnames[i]);
+		dimids[i] = vset->ndims-1;
+	    }
     }
     return nct_add_var(vset, src, xtype, name, ndims, dimids);
 }
@@ -149,6 +145,13 @@ nct_vset* nct_assign_shape(nct_vset* vset, ...) {
 failed:
     fprintf(stderr, "Realloc failed in nct_assign_shape\n");
     return vset;
+}
+
+nct_var* nct_assign_var(nct_var* var) {
+    if(var->super->varcapacity < var->super->nvars+1)
+	var->super->vars = realloc(var->super->vars, (var->super->varcapacity=var->super->nvars+3)*sizeof(void*));
+    var->super->vars[var->super->nvars++] = var;
+    return var;
 }
 
 char* nct_find_unique_varname(nct_vset* vset, char* initname) {
@@ -356,9 +359,11 @@ void nct_print_dim(nct_var* var, const char* indent) {
     printf("%s%s%s %s%s(%zu)%s:\n",
 	   indent, nct_type_color, nct_typenames[var->xtype],
 	   nct_dimname_color, var->name, var->len, nct_default_color);
-    printf("%s  ", indent);
-    nct_print_var_data(var);
-    puts("]");
+    if(var->data) {
+	printf("%s  [", indent);
+	nct_print_var_data(var);
+	puts("]");
+    }
 }
 
 void nct_print_var(nct_var* var, const char* indent) {
@@ -435,7 +440,8 @@ nct_vset* nct_read_ncfile_info(const char* restrict filename) {
 
 nct_var* nct_var_dropdim0(nct_var* var) {
     size_t new_len = nct_get_varlen(var) / NCTVARDIM(*var,0).len;
-    var->data = realloc(var->data, new_len*nctypelen(var->xtype));
+    if(!(var->nonfreeable_data))
+	var->data = realloc(var->data, new_len*nctypelen(var->xtype));
     var->len = new_len;
     int* ptr = var->dimids;
     memmove(ptr, ptr+1, --var->ndims*sizeof(int));
@@ -447,25 +453,27 @@ nct_var* nct_varcpy(nct_var* src) {
 }
 
 nct_var* nct_varcpy_gd(nct_var* dest, nct_var* src) {
-    dest->super            = src->super;
-    dest->name             = strdup(src->name);
-    dest->freeable_name    = 1;
-    dest->ndims            = src->ndims;
-    dest->dimcapacity      = src->ndims+1;
-    dest->dimids           = malloc(dest->dimcapacity*sizeof(int));
-    dest->natts            = src->natts;
-    dest->attcapacity      = src->natts;
-    dest->atts             = malloc(dest->attcapacity*sizeof(nct_att));
-    dest->len              = nct_get_varlen(src);
-    dest->xtype            = src->xtype;
-    dest->nonfreeable_data = 0;
-    dest->data             = malloc(dest->len*nctypelen(dest->xtype));
+    dest->super             = src->super;
+    if(!dest->name) {
+	dest->name          = nct_find_unique_varname(src->super, src->name);
+	dest->freeable_name = 1;
+    }
+    dest->ndims             = src->ndims;
+    dest->dimcapacity       = src->ndims+1;
+    dest->dimids            = malloc(dest->dimcapacity*sizeof(int));
+    dest->natts             = src->natts;
+    dest->attcapacity       = src->natts;
+    dest->atts              = malloc(dest->attcapacity*sizeof(nct_att));
+    dest->len               = nct_get_varlen(src);
+    dest->xtype             = src->xtype;
+    dest->nonfreeable_data  = 0;
+    dest->data              = malloc(dest->len*nctypelen(dest->xtype));
     memcpy(dest->dimids, src->dimids, src->ndims*sizeof(int));
     if(dest->xtype == NC_STRING)
 	for(size_t i=0; i<dest->len; i++)
 	    ((char**)dest->data)[i] = strdup(((char**)src->data)[i]);
     else
-	memcpy(dest->data, src->data, src->len*nctypelen(src->xtype));
+	memcpy(dest->data, src->data, dest->len*nctypelen(src->xtype));
     for(int i=0; i<dest->natts; i++) {
 	nct_att* attdest = dest->atts + i;
 	nct_att* attsrc = src->atts + i;
@@ -479,6 +487,12 @@ nct_var* nct_varcpy_gd(nct_var* dest, nct_var* src) {
     return dest;
 }
 
+nct_var* nct_vardup(nct_var* src, char* name) {
+    nct_var* v = calloc(1, sizeof(nct_var));
+    v->name = name;
+    return nct_assign_var(nct_varcpy_gd(v, src));
+}
+
 nct_var* nct_varmean0(nct_var* var) {
     return _varmean0[var->xtype](var);
 }
@@ -487,7 +501,7 @@ nct_var* nct_varmean0(nct_var* var) {
     nct_var* nct_varmean0_##nctype(nct_var* var)			\
     {									\
 	size_t zerolen = NCTVARDIM(*var,0).len;				\
-	size_t new_len = var->len / zerolen;				\
+	size_t new_len = nct_get_varlen(var) / zerolen;			\
 	for(size_t i=0; i<new_len; i++) {				\
 	    for(size_t j=1; j<zerolen; j++)				\
 		((ctype*)var->data)[i] += ((ctype*)var->data)[i+new_len*j]; \
@@ -506,7 +520,7 @@ nct_var* nct_varnanmean0(nct_var* var) {
     nct_var* nct_varnanmean0_##nctype(nct_var* var)		\
     {								\
 	size_t zerolen = NCTVARDIM(*var,0).len;			\
-	size_t new_len = var->len / zerolen;			\
+	size_t new_len = nct_get_varlen(var) / zerolen;		\
 	for(size_t i=0; i<new_len; i++) {			\
 	    int count = 0;					\
 	    ctype new_value = 0;				\
