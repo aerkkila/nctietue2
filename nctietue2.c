@@ -278,6 +278,68 @@ failed:
 const char* nct_typenames[] = { ALL_TYPES };
 #undef ONE_TYPE
 
+nct_any nct_varmax(nct_var* var) {
+    return _varmax_anyd[var->xtype](var).a;
+}
+
+#define ONE_TYPE(nctype, idtype, ctype)				\
+    ctype nct_varmax_##nctype(nct_var* var)			\
+    {								\
+	return nct_varmax_anyd_##nctype(var).a.idtype;		\
+    }
+ALL_TYPES_EXCEPT_STRING
+#undef ONE_TYPE
+
+nct_anyd nct_varmax_anyd(nct_var* var) {
+    return _varmax_anyd[var->xtype](var);
+}
+
+#define ONE_TYPE(nctype, idtype, ctype)				\
+    nct_anyd nct_varmax_anyd_##nctype(nct_var* var)		\
+    {								\
+	if(!(var->len=nct_get_varlen(var)))			\
+	    return (nct_anyd){ {0}, -1 };			\
+	size_t numi=0;						\
+	ctype num = ((ctype*)var->data)[0];			\
+	for(size_t i=1; i<var->len; i++)			\
+	    if(num < ((ctype*)var->data)[i])			\
+		num = ((ctype*)var->data)[numi=i];		\
+	return (nct_anyd){ {.idtype=num}, numi };		\
+    }
+ALL_TYPES_EXCEPT_STRING
+#undef ONE_TYPE
+
+nct_any nct_varmin(nct_var* var) {
+    return _varmin_anyd[var->xtype](var).a;
+}
+
+#define ONE_TYPE(nctype, idtype, ctype)				\
+    ctype nct_varmin_##nctype(nct_var* var)			\
+    {								\
+	return nct_varmin_anyd_##nctype(var).a.idtype;		\
+    }
+ALL_TYPES_EXCEPT_STRING
+#undef ONE_TYPE
+
+nct_anyd nct_varmin_anyd(nct_var* var) {
+    return _varmin_anyd[var->xtype](var);
+}
+
+#define ONE_TYPE(nctype, idtype, ctype)				\
+    nct_anyd nct_varmin_anyd_##nctype(nct_var* var)		\
+    {								\
+	if(!(var->len=nct_get_varlen(var)))			\
+	    return (nct_anyd){ {0}, -1 };			\
+	size_t numi=0;						\
+	ctype num = ((ctype*)var->data)[0];			\
+	for(size_t i=1; i<var->len; i++)			\
+	    if(num > ((ctype*)var->data)[i])			\
+		num = ((ctype*)var->data)[numi=i];		\
+	return (nct_anyd){ {.idtype=num}, numi };		\
+    }
+ALL_TYPES_EXCEPT_STRING
+#undef ONE_TYPE
+
 void* nct_varminmax(nct_var* var, void* resultv) {
     return _varminmax[var->xtype](var, resultv);
 }
@@ -438,7 +500,7 @@ nct_vset* nct_read_ncfile_info(const char* restrict filename) {
     return nct_read_ncfile_info_gd(calloc(1,sizeof(nct_vset)), filename);
 }
 
-nct_var* nct_var_dropdim0(nct_var* var) {
+nct_var* nct_var_dropdim_first(nct_var* var) {
     if(!var->ndims)
 	return var;
     size_t new_len = nct_get_varlen(var) / NCTVARDIM(*var,0).len;
@@ -495,12 +557,12 @@ nct_var* nct_vardup(nct_var* src, char* name) {
     return nct_assign_var(nct_varcpy_gd(v, src));
 }
 
-nct_var* nct_varmean0(nct_var* var) {
-    return _varmean0[var->xtype](var);
+nct_var* nct_varmean_first(nct_var* var) {
+    return _varmean_first[var->xtype](var);
 }
 
 #define ONE_TYPE(nctype, a, ctype)					\
-    nct_var* nct_varmean0_##nctype(nct_var* var)			\
+    nct_var* nct_varmean_first_##nctype(nct_var* var)			\
     {									\
 	size_t zerolen = NCTVARDIM(*var,0).len;				\
 	size_t new_len = nct_get_varlen(var) / zerolen;			\
@@ -509,17 +571,17 @@ nct_var* nct_varmean0(nct_var* var) {
 		((ctype*)var->data)[i] += ((ctype*)var->data)[i+new_len*j]; \
 	    ((ctype*)var->data)[i] /= zerolen;				\
 	}								\
-	return nct_var_dropdim0(var);					\
+	return nct_var_dropdim_first(var);				\
     }
 ALL_TYPES_EXCEPT_STRING
 #undef ONE_TYPE
 
-nct_var* nct_varnanmean0(nct_var* var) {
-    return _varnanmean0[var->xtype](var);
+nct_var* nct_varmeannan_first(nct_var* var) {
+    return _varmeannan_first[var->xtype](var);
 }
 
 #define ONE_TYPE(nctype, a, ctype)				\
-    nct_var* nct_varnanmean0_##nctype(nct_var* var)		\
+    nct_var* nct_varmeannan_first_##nctype(nct_var* var)	\
     {								\
 	size_t zerolen = NCTVARDIM(*var,0).len;			\
 	size_t new_len = nct_get_varlen(var) / zerolen;		\
@@ -535,7 +597,7 @@ nct_var* nct_varnanmean0(nct_var* var) {
 	    }							\
 	    ((ctype*)var->data)[i] = new_value/count;		\
 	}							\
-	return nct_var_dropdim0(var);				\
+	return nct_var_dropdim_first(var);			\
     }
 ALL_TYPES_EXCEPT_STRING
 #undef ONE_TYPE

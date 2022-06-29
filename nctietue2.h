@@ -6,12 +6,14 @@
 typedef struct nct_att nct_att;
 typedef struct nct_var nct_var;
 typedef struct nct_vset nct_vset;
+typedef union  nct_any nct_any;
+typedef struct nct_anyd nct_anyd;
 
 struct nct_att {
-    char* name;
-    void* value;
-    nc_type xtype;
-    int len;
+    char*    name;
+    void*    value;
+    nc_type  xtype;
+    int      len;
     unsigned freeable;
 };
 
@@ -42,6 +44,26 @@ struct nct_vset {
     int attcapacity;
     nct_att* atts;
     int ncid;
+};
+
+union nct_any {
+    char hhi;
+    char c;
+    unsigned char hhu;
+    short hi;
+    unsigned short hu;
+    int i;
+    unsigned u;
+    long long lli;
+    long long unsigned llu;
+    float f;
+    double lf;
+    char* s;
+};
+
+struct nct_anyd {
+    nct_any a;
+    size_t  d;
 };
 
 extern const char* nct_error_color;
@@ -77,8 +99,8 @@ extern       int   nct_ncret;
 	ONE_TYPE(NC_UINT, u, unsigned)			\
 	ONE_TYPE(NC_UINT64, llu, long long unsigned)	\
 	ONE_TYPE(NC_INT64, lli, long long int)		\
-	ONE_TYPE(NC_FLOAT, .4f, float)			\
-	ONE_TYPE(NC_DOUBLE, .4lf, double)
+	ONE_TYPE(NC_FLOAT, f, float)			\
+	ONE_TYPE(NC_DOUBLE, lf, double)
 #define ALL_TYPES				\
     ALL_TYPES_EXCEPT_STRING			\
     ONE_TYPE(NC_STRING, s, char*)
@@ -134,15 +156,31 @@ ALL_TYPES
 ALL_TYPES_EXCEPT_STRING
 #undef ONE_TYPE
 
+#define ONE_TYPE(nctype,b,ctype) ctype nct_varmax_##nctype(nct_var*);
+ALL_TYPES_EXCEPT_STRING
+#undef ONE_TYPE
+
+#define ONE_TYPE(nctype,b,ctype) nct_anyd nct_varmax_anyd_##nctype(nct_var*);
+ALL_TYPES_EXCEPT_STRING
+#undef ONE_TYPE
+
+#define ONE_TYPE(nctype,b,ctype) ctype nct_varmin_##nctype(nct_var*);
+ALL_TYPES_EXCEPT_STRING
+#undef ONE_TYPE
+
+#define ONE_TYPE(nctype,b,ctype) nct_anyd nct_varmin_anyd_##nctype(nct_var*);
+ALL_TYPES_EXCEPT_STRING
+#undef ONE_TYPE
+
 #define ONE_TYPE(nctype, a, ctype) void* nct_varminmax_##nctype(nct_var*, void*);
 ALL_TYPES_EXCEPT_STRING
 #undef ONE_TYPE
 
-#define ONE_TYPE(nctype, a, ctype) nct_var* nct_varmean0_##nctype(nct_var*);
+#define ONE_TYPE(nctype, a, ctype) nct_var* nct_varmean_first_##nctype(nct_var*);
 ALL_TYPES_EXCEPT_STRING
 #undef ONE_TYPE
 
-#define ONE_TYPE(nctype, a, ctype) nct_var* nct_varnanmean0_##nctype(nct_var*);
+#define ONE_TYPE(nctype, a, ctype) nct_var* nct_varmeannan_first_##nctype(nct_var*);
 ALL_TYPES_EXCEPT_STRING
 #undef ONE_TYPE
 
@@ -174,7 +212,6 @@ int       nct_get_varid(nct_vset*, char*);
 size_t    nct_get_varlen(nct_var*);
 void      nct_init();
 nct_var*  nct_load_var(nct_var* var, int ncvarid);
-void*     nct_varminmax(nct_var*, void*);
 nct_vset* nct_move_var_tosimilar(nct_vset* dest, nct_var* srcvar);
 nct_vset* nct_move_vset_tosimilar(nct_vset* dest, nct_vset* src);
 void      nct_print_var(nct_var* var, const char* indent);
@@ -192,9 +229,14 @@ nct_var*  nct_to_var_gd(nct_var* dest, void* arr, size_t len, nc_type xtype, cha
 nct_var*  nct_varcpy(nct_var* src);
 nct_var*  nct_varcpy_gd(nct_var* dest, nct_var* src);
 nct_var*  nct_vardup(nct_var* src, char*);
-nct_var*  nct_var_dropdim0(nct_var*);
-nct_var*  nct_varmean0(nct_var*);
-nct_var*  nct_varnanmean0(nct_var*);
+nct_var*  nct_var_dropdim_first(nct_var*);
+nct_var*  nct_varmean_first(nct_var*);
+nct_var*  nct_varmeannan_first(nct_var*);
+nct_any   nct_varmax(nct_var*);
+nct_anyd  nct_varmax_anyd(nct_var*);
+nct_any   nct_varmin(nct_var*);
+nct_anyd  nct_varmin_anyd(nct_var*);
+void*     nct_varminmax(nct_var*, void*);
 nct_vset* nct_vset_isel(nct_vset* vset, int dimid, size_t ind0, size_t ind1);
 nct_vset* nct_vsetcpy(const nct_vset* src);
 nct_vset* nct_vsetcpy_gd(nct_vset* dest, const nct_vset* src);

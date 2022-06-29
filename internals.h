@@ -93,14 +93,22 @@ FOUND:;
 void (*_printfunctions[])(void*, int, int) = { ALL_TYPES };
 #undef ONE_TYPE
 
-#define ONE_TYPE(nctype, a, b) [nctype]=nct_varmean0_##nctype,
-nct_var* (*_varmean0[])(nct_var*) = { ALL_TYPES_EXCEPT_STRING };
+#define ONE_TYPE(nctype, ...) [nctype]=nct_varmax_anyd_##nctype,
+nct_anyd (*_varmax_anyd[])(nct_var*) = { ALL_TYPES_EXCEPT_STRING };
+#undef ONE_TYPE
+
+#define ONE_TYPE(nctype, a, b) [nctype]=nct_varmean_first_##nctype,
+nct_var* (*_varmean_first[])(nct_var*) = { ALL_TYPES_EXCEPT_STRING };
+#undef ONE_TYPE
+
+#define ONE_TYPE(nctype, a, b) [nctype]=nct_varmeannan_first_##nctype,
+nct_var* (*_varmeannan_first[])(nct_var*) = { ALL_TYPES_EXCEPT_STRING };
+#undef ONE_TYPE
+
+#define ONE_TYPE(nctype, a, b) [nctype]=nct_varmin_anyd_##nctype,
+nct_anyd (*_varmin_anyd[])(nct_var*) = { ALL_TYPES_EXCEPT_STRING };
 #undef ONE_TYPE
 
 #define ONE_TYPE(nctype, a, b) [nctype]=nct_varminmax_##nctype,
 void* (*_varminmax[])(nct_var*, void*) = { ALL_TYPES_EXCEPT_STRING };
-#undef ONE_TYPE
-
-#define ONE_TYPE(nctype, a, b) [nctype]=nct_varnanmean0_##nctype,
-nct_var* (*_varnanmean0[])(nct_var*) = { ALL_TYPES_EXCEPT_STRING };
 #undef ONE_TYPE

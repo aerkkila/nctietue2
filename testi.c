@@ -71,17 +71,29 @@ void t_dropdim_and_mean() {
     nct_add_var_(&a, ad, NC_DOUBLE, "epäluku",   2, dimids, NULL, NULL)->nonfreeable_data = 1;
     nct_vardup(&NCTVAR(a, "liukuluku"), "dropliuku");
     nct_vardup(&NCTVAR(a, "kokonluku"), NULL);
-    nct_var_dropdim0(&NCTVAR(a, "dropliuku"));
-    nct_var_dropdim0(a.vars[a.nvars-1]);
-    nct_var_dropdim0(a.vars[a.nvars-1]);
-    nct_var_dropdim0(a.vars[a.nvars-1]);
+    nct_var_dropdim_first(&NCTVAR(a, "dropliuku"));
+    nct_var_dropdim_first(a.vars[a.nvars-1]);
+    nct_var_dropdim_first(a.vars[a.nvars-1]);
+    nct_var_dropdim_first(a.vars[a.nvars-1]);
     nct_print_vset(&a);
     puts("––––––––––––––––––––");
+    nct_anyd anydi = nct_varmin_anyd(&NCTVAR(a,"kokonluku"));
+    printf("%7f %zu\n%7i %zu\n%7lf %zu\n",
+	   nct_varmin(&NCTVAR(a,"liukuluku")).f, nct_varmin_anyd(&NCTVAR(a,"liukuluku")).d,
+	   anydi.a.i, anydi.d,
+	   nct_varmin_NC_DOUBLE(&NCTVAR(a,"epäluku")), nct_varmin_anyd(&NCTVAR(a,"epäluku")).d);
+    puts("");
+    anydi = nct_varmax_anyd(&NCTVAR(a,"kokonluku"));
+    printf("%7f %zu\n%7i %zu\n%7lf %zu\n",
+	   nct_varmax(&NCTVAR(a,"liukuluku")).f, nct_varmax_anyd(&NCTVAR(a,"liukuluku")).d,
+	   anydi.a.i, anydi.d,
+	   nct_varmax_NC_DOUBLE(&NCTVAR(a,"epäluku")), nct_varmax_anyd(&NCTVAR(a,"epäluku")).d);
+    puts("––––––––––––––––––––");
     nct_vardup(&NCTVAR(a, "epäluku"), "nanepäluku");
-    nct_varmean0(&NCTVAR(a, "liukuluku"));
-    nct_varmean0(&NCTVAR(a, "kokonluku"));
-    nct_varmean0(&NCTVAR(a, "epäluku"));
-    nct_varnanmean0(&NCTVAR(a, "nanepäluku"));
+    nct_varmean_first(&NCTVAR(a, "liukuluku"));
+    nct_varmean_first(&NCTVAR(a, "kokonluku"));
+    nct_varmean_first(&NCTVAR(a, "epäluku"));
+    nct_varmeannan_first(&NCTVAR(a, "nanepäluku"));
     nct_print_vset(&a);
     nct_free_vset(&a);
     printf("\033[7;1mt_dropdim_and_mean valmis\033[0m\n");
