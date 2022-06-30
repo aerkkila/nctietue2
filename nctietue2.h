@@ -214,6 +214,8 @@ void      nct_init();
 nct_var*  nct_load_var(nct_var* var, int ncvarid);
 nct_vset* nct_move_var_tosimilar(nct_vset* dest, nct_var* srcvar);
 nct_vset* nct_move_vset_tosimilar(nct_vset* dest, nct_vset* src);
+nct_var*  nct_next_truevar(nct_var*);
+int       nct_next_truevar_i(nct_vset*, int);
 void      nct_print_var(nct_var* var, const char* indent);
 void      nct_print_var_data(nct_var*);
 void      nct_print_vset(nct_vset* vs);

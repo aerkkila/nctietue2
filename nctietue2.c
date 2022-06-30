@@ -396,6 +396,21 @@ failed:
     return dest;
 }
 
+nct_var* nct_next_truevar(nct_var* var) {
+    int len = var->super->nvars;
+    for(int i=0; i<len; i++)
+	if(nct_get_id_thisdim(var->super->vars[i]) < 0)
+	    return var->super->vars[i];
+    return NULL;
+}
+
+int nct_next_truevar_i(nct_vset* vset, int i0) {
+    for(int i=i0; i<vset->nvars; i++)
+	if(nct_get_id_thisdim(vset->vars[i]) < 0)
+	    return i;
+    return -1;
+}
+
 #define ONE_TYPE(nctype,form,ctype)				\
     ctype* nct_range_##nctype(ctype i0, ctype i1, ctype gap) {	\
 	size_t len = (i1-i0)/gap;				\
