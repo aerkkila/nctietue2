@@ -46,12 +46,12 @@ static nct_vset* _nct_read_var_info(nct_vset *vset, int varid) {
 	NCFUNK(nc_inq_attname, vset->ncid, varid, i, name);
 	NCFUNK(nc_inq_att, vset->ncid, varid, name, &xtype, &len);
 	att->name     = strdup(name);
-	att->value    = malloc(len*nctypelen(xtype) + (xtype==NC_STRING));
+	att->value    = malloc(len*nctypelen(xtype) + (xtype==NC_CHAR));
 	att->xtype    = xtype;
 	att->len      = len;
 	att->freeable = 3;
 	NCFUNK(nc_get_att, vset->ncid, varid, name, att->value);
-	if(att->xtype == NC_STRING) {
+	if(att->xtype == NC_CHAR) {
 	    if(((char*)att->value)[len-1] != '\0')
 		att->len++;
 	    ((char*)att->value)[len-1] = '\0';
