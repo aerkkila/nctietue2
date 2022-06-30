@@ -154,7 +154,7 @@ nct_var* nct_assign_var(nct_var* var) {
     return var;
 }
 
-char* nct_find_unique_varname(nct_vset* vset, char* initname) {
+char* nct_find_unique_varname(nct_vset* vset, const char* initname) {
     char newname[strlen(initname)+6];
     strcpy(newname, initname);
     char* ptr = newname + strlen(newname);
@@ -170,6 +170,9 @@ char* nct_find_unique_varname(nct_vset* vset, char* initname) {
 }
 
 void nct_free_att(nct_att* att) {
+    if(att->xtype == NC_STRING)
+	for(int i=0; i<att->len; i++)
+	    free(((char**)att->value)[i]);
     if(att->freeable & 1)
 	free(att->value);
     if(att->freeable & 2)
@@ -192,6 +195,8 @@ void nct_free_var(nct_var* var) {
 }
 
 void nct_free_vset(nct_vset* vs) {
+    if(!vs)
+	return;
     for(int i=0; i<vs->natts; i++)
 	nct_free_att(vs->atts+1);
     free(vs->atts);
@@ -212,7 +217,7 @@ void nct_free_vset(nct_vset* vs) {
     free(vs->dims);
 }
 
-int nct_get_dimid(nct_vset* vset, char* name) {
+int nct_get_dimid(nct_vset* vset, const char* name) {
     for(int i=0; i<vset->ndims; i++)
 	if(!strcmp(vset->dims[i]->name, name))
 	    return i;
@@ -233,14 +238,14 @@ int nct_get_id_thisvar(nct_var* v) {
     return -1;
 }
 
-char* nct_get_varatt_text(nct_var* var, char* name) {
+char* nct_get_varatt_text(nct_var* var, const char* name) {
     for(int i=0; i<var->natts; i++)
 	if(!strcmp(var->atts[i].name, name))
 	    return var->atts[i].value;
     return NULL;
 }
 
-int nct_get_varid(nct_vset* vset, char* name) {
+int nct_get_varid(nct_vset* vset, const char* name) {
     for(int i=0; i<vset->nvars; i++)
 	if(!strcmp(vset->vars[i]->name, name))
 	    return i;
@@ -481,6 +486,15 @@ nct_vset* nct_read_ncfile_gd(nct_vset* dest, const char* restrict filename) {
     return dest;
 }
 
+nct_vset* nct_read_ncfile_gd0(nct_vset* dest, const char* restrict filename) {
+    memset(dest, 0, sizeof(nct_vset));
+    return nct_read_ncfile_gd(dest, filename);
+}
+
+nct_vset* nct_read_ncfile_info(const char* restrict filename) {
+    return nct_read_ncfile_info_gd(calloc(1,sizeof(nct_vset)), filename);
+}
+
 nct_vset* nct_read_ncfile_info_gd(nct_vset* dest, const char* restrict filename) {
     int ncid;
     NCFUNK(nc_open, filename, NC_NOWRITE, &ncid);
@@ -496,8 +510,9 @@ nct_vset* nct_read_ncfile_info_gd(nct_vset* dest, const char* restrict filename)
     return dest;
 }
 
-nct_vset* nct_read_ncfile_info(const char* restrict filename) {
-    return nct_read_ncfile_info_gd(calloc(1,sizeof(nct_vset)), filename);
+nct_vset* nct_read_ncfile_info_gd0(nct_vset* dest, const char* restrict filename) {
+    memset(dest, 0, sizeof(nct_vset));
+    return nct_read_ncfile_info_gd(dest, filename);
 }
 
 nct_var* nct_var_dropdim_first(nct_var* var) {
