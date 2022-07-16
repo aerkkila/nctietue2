@@ -59,16 +59,17 @@ int main(int argc, char** argv) {
     if(varname)
 	var = &NCTVAR(*vset, varname);
     else
-	var = nct_next_truevar(vset->vars[0]);
+	var = nct_next_truevar0(vset->vars[0]);
     if(!var) {
 	NCFUNK(nc_close, vset->ncid);
 	nct_free_vset(vset);
 	return 1;
     }
-    puts(var->name);
     nct_load_var(var, nct_get_id_thisvar(var));
-    NCFUNK(nc_close, vset->ncid);
+
     nct_plot_var(var);
+
+    NCFUNK(nc_close, vset->ncid);
     nct_free_vset(vset);
     free(filename);
     filename = NULL;

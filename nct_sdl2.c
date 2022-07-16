@@ -6,7 +6,6 @@
 
 #define MIN(a,b) ((a)<=(b)? (a): (b))
 #define MAX(a,b) ((a)>=(b)? (a): (b))
-#define GET_XSCALE_1D(xlen, win_w) (float)(xlen)/(win_w)
 #define ARRSIZE(a) sizeof(a)/sizeof(*(a))
 
 static SDL_Renderer* rend;
@@ -15,11 +14,17 @@ static SDL_Texture* base;
 static nct_var* var;
 static int win_w, win_h, xid, yid, draw_w, draw_h;
 static int invert_y, invert_c, stop, echo_on=1, has_echoed, fill_on;
-static int cmapnum=18, cmappix=30, cmapspace=10, call_resized;
+static int cmapnum=18, cmappix=30, cmapspace=10, call_resized, call_redraw;
 static float space, minshift, maxshift;
 static unsigned char color_fg[3] = {255, 255, 255};
 static unsigned char color_bg[3] = {0, 0, 0};
 static void (*redraw)(nct_var*);
+
+static void redraw_1d(nct_var* var);
+static void redraw_2d(nct_var* var);
+static void draw_colormap();
+static void set_xid_and_yid();
+static uint_fast64_t time_now_ms();
 
 SDL_Event event;
 
@@ -69,11 +74,11 @@ void draw_colormap() {
 	SDL_SetRenderDrawColor(rend, color_bg[0], color_bg[1], color_bg[2], 255); \
 	SDL_RenderClear(rend);						\
 	if(echo_on)							\
-	    printf("%smin %" #form ", max %" #form "\033[K\n"		\
+	    printf("%s%s: min %" #form ", max %" #form "\033[K\n"	\
 		   "minshift %.4f, maxshift %.4f\033[K\n"		\
 		   "space = %.4f\033[K\n"				\
 		   "colormap = %s\033[K\n",				\
-		   has_echoed++? "\033[4F": "", minmax[0], minmax[1],	\
+		   has_echoed++? "\033[4F": "", var->name, minmax[0], minmax[1], \
 		   minshift, maxshift,					\
 		   space, colormaps[cmapnum*2+1]);			\
 	if(invert_y) {							\
@@ -135,7 +140,31 @@ static void (*drawfunctions_2d[])(nct_var*) = {ALL_TYPES_EXCEPT_STRING};
 static void (*drawfunctions_1d[])(nct_var*) = {ALL_TYPES_EXCEPT_STRING};
 #undef ONE_TYPE
 
+void set_xid_and_yid() {
+    xid = var->ndims-1;
+    yid = var->ndims-2;
+    if(yid < 0)
+	redraw = redraw_1d;
+    else
+	redraw = redraw_2d;
+}
+
+static uint_fast64_t time_now_ms() {
+    struct timeval t;
+    gettimeofday(&t, NULL);
+    return t.tv_sec*1000 + t.tv_usec/1000;
+}
+
 static void redraw_2d(nct_var* var) {
+    static uint_fast64_t lasttime;
+    uint_fast64_t thistime = time_now_ms();
+    if(thistime-lasttime < 16) {
+	call_redraw = 1;
+	return;
+    }
+    call_redraw = 0;
+    lasttime = thistime;
+
     SDL_SetRenderTarget(rend, base);
     drawfunctions_2d[var->xtype](var);
     SDL_SetRenderTarget(rend, NULL);
@@ -147,20 +176,19 @@ static void redraw_1d(nct_var* var) {
     SDL_SetRenderTarget(rend, NULL);
 }
 
-static uint_fast64_t time_now_ms() {
-    struct timeval t;
-    gettimeofday(&t, NULL);
-    return t.tv_sec*1000 + t.tv_usec/1000;
-}
-
 #define GET_SPACE_FILL(xlen,win_w,ylen,win_h)    MIN((float)(ylen)/(win_h), (float)(xlen)/(win_w))
 #define GET_SPACE_NONFILL(xlen,win_w,ylen,win_h) MAX((float)(ylen)/(win_h), (float)(xlen)/(win_w))
 #define GET_SPACE(a,b,c,d) (fill_on? GET_SPACE_FILL(a,b,c,d): GET_SPACE_NONFILL(a,b,c,d))
 
 static void set_draw_params() {
-    int xlen = NCTVARDIM(*var,xid).len;
-    int ylen = NCTVARDIM(*var,yid).len;
-    space    = GET_SPACE(xlen, win_w, ylen, win_h-cmapspace-cmappix);
+    int xlen = NCTVARDIM(*var,xid).len, ylen;
+    if(yid>=0) {
+	ylen = NCTVARDIM(*var,yid).len;
+	space    = GET_SPACE(xlen, win_w, ylen, win_h-cmapspace-cmappix);
+    } else {
+	space = (float)(xlen)/(win_w);
+	ylen = win_h * space;
+    }
     draw_w   = xlen / space;
     draw_h   = ylen / space;
     if(fill_on) {
@@ -219,6 +247,22 @@ void cmap_ichange(Arg jump) {
     redraw(var);
 }
 
+void var_ichange(Arg jump) {
+    nct_var* v;
+    if(!(v = nct_next_truevar1(var)))
+	v = nct_next_truevar0(var->super->vars[0]);
+    if(!v) {
+	puts("This is impossible. A variable was not found.");
+	return;
+    }
+    var = v;
+    if(!var->data)
+	nct_load_var(var, nct_get_id_thisvar(var));
+    set_xid_and_yid();
+    set_draw_params();
+    redraw(var);
+}
+
 Binding keydown_bindings[] = {
     { SDLK_i,     0,          toggle_var,    {.v=&invert_y} },
     { SDLK_q,     0,          quit,          {0}            },
@@ -232,6 +276,7 @@ Binding keydown_bindings[] = {
     { SDLK_c,     0,          cmap_ichange,  {.i=1}         },
     { SDLK_c,     KMOD_SHIFT, cmap_ichange,  {.i=-1}        },
     { SDLK_c,     KMOD_ALT,   toggle_var,    {.v=&invert_c} },
+    { SDLK_v,     0,          var_ichange,   {.i=1}         },
 };
 
 int get_modstate() {
@@ -272,24 +317,11 @@ static void mainloop() {
 	}
 	if(stop) return;
 	if(call_resized) resized();
+	if(call_redraw) redraw(var);
 	SDL_RenderCopy(rend, base, NULL, NULL);
 	SDL_RenderPresent(rend);
 	SDL_Delay(12);
     }
-}
-
-static void _plot_var_1d(nct_var* var) {
-    /*come from nct_plot_var*/
-    int xlen = NCTVARDIM(*var, xid).len;
-    window = SDL_CreateWindow("Figure", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, MIN(xlen,win_w), MIN(800,win_h), SDL_WINDOW_RESIZABLE);
-    rend = SDL_CreateRenderer(window, -1, SDL_RENDERER_TARGETTEXTURE);
-    SDL_GetWindowSize(window, &win_w, &win_h);
-    base = SDL_CreateTexture(rend, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, win_w, win_h);
-    space = GET_XSCALE_1D(xlen, win_w);
-
-    redraw_1d(var);
-
-    mainloop();
 }
 
 void nct_plot_var(nct_var* _var) {
@@ -308,15 +340,12 @@ void nct_plot_var(nct_var* _var) {
 	win_w = dm.w;
 	win_h = dm.h;
     }
-    xid = var->ndims-1;
-    yid = var->ndims-2;
-    if(yid < 0) {
-	redraw = redraw_1d;
-	return _plot_var_1d(var);
-    }
-    redraw = redraw_2d;
-    int xlen = NCTVARDIM(*var, xid).len;
-    int ylen = NCTVARDIM(*var, yid).len;
+    set_xid_and_yid();
+    int xlen = NCTVARDIM(*var, xid).len, ylen;
+    if(yid>=0)
+	ylen = NCTVARDIM(*var, yid).len;
+    else
+	ylen = 400;
   
     window = SDL_CreateWindow("Figure", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
 			      MIN(xlen, win_w), MIN(ylen+cmapspace+cmappix, win_h), SDL_WINDOW_RESIZABLE);

@@ -401,10 +401,19 @@ failed:
     return dest;
 }
 
-nct_var* nct_next_truevar(nct_var* var) {
+nct_var* nct_next_truevar0(nct_var* var) {
     int len = var->super->nvars;
     int this = nct_get_id_thisvar(var);
     for(int i=this; i<len; i++)
+	if(nct_get_id_thisdim(var->super->vars[i]) < 0)
+	    return var->super->vars[i];
+    return NULL;
+}
+
+nct_var* nct_next_truevar1(nct_var* var) {
+    int len = var->super->nvars;
+    int this = nct_get_id_thisvar(var);
+    for(int i=this+1; i<len; i++)
 	if(nct_get_id_thisdim(var->super->vars[i]) < 0)
 	    return var->super->vars[i];
     return NULL;
