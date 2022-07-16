@@ -9,6 +9,7 @@ kuva*
 *.nc
 colormaps.h
 nctietue2.pc
+nct_gtk.c
 tools/nct_add_similars
 tools/nct_info
 tools/nct_plot
