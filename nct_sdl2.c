@@ -2,6 +2,7 @@
 #include <sys/time.h>
 #include <stdint.h>
 #include "nctietue2.h"
+#include "colormaps.h"
 
 #define MIN(a,b) ((a)<=(b)? (a): (b))
 #define MAX(a,b) ((a)>=(b)? (a): (b))
@@ -13,9 +14,10 @@ static SDL_Window* window;
 static SDL_Texture* base;
 static nct_var* var;
 static int win_w, win_h, xid, yid, draw_w, draw_h;
-static int invert_y, stop, echo_on, has_echoed, fill_on;
+static int invert_y, invert_c, stop, echo_on=1, has_echoed, fill_on;
+static int cmapnum=18, cmappix=30, cmapspace=10, call_resized;
 static float space, minshift, maxshift;
-static unsigned char color_fg[3] = {1, 1, 1};
+static unsigned char color_fg[3] = {255, 255, 255};
 static unsigned char color_bg[3] = {0, 0, 0};
 static void (*redraw)(nct_var*);
 
@@ -24,6 +26,7 @@ SDL_Event event;
 typedef union {
     void* v;
     float f;
+    int   i;
 } Arg;
 
 typedef struct {
@@ -33,11 +36,31 @@ typedef struct {
     Arg arg;
 } Binding;
 
+void draw_colormap() {
+    float cspace = 255.0f/win_w;
+    float di = 0;
+    if(!invert_c)
+	for(int i=0; i<win_w; i++, di+=cspace) {
+	    char* c = COLORVALUE(cmapnum, (int)di);
+	    SDL_SetRenderDrawColor(rend, c[0], c[1], c[2], 255);
+	    for(int j=draw_h+cmapspace; j<draw_h+cmapspace+cmappix; j++)
+		SDL_RenderDrawPoint(rend, i, j);
+	}
+    else
+	for(int i=win_w-1; i>=0; i--, di+=cspace) {
+	    char* c = COLORVALUE(cmapnum, (int)di);
+	    SDL_SetRenderDrawColor(rend, c[0], c[1], c[2], 255);
+	    for(int j=draw_h+cmapspace; j<draw_h+cmapspace+cmappix; j++)
+		SDL_RenderDrawPoint(rend, i, j);
+	}
+	
+}
+
 #define ONE_TYPE(nctype, form, ctype)					\
     static void draw2d_##nctype(nct_var* var)				\
     {									\
 	int xlen = NCTVARDIM(*var,xid).len;				\
-	double di=0, dj=0;						\
+	float di=0, dj=0;						\
 	ctype minmax[2], range;						\
 	nct_varminmax_##nctype(var, minmax);				\
 	range = minmax[1]-minmax[0];					\
@@ -48,8 +71,11 @@ typedef struct {
 	if(echo_on)							\
 	    printf("%smin %" #form ", max %" #form "\033[K\n"		\
 		   "minshift %.4f, maxshift %.4f\033[K\n"		\
-		   "space %.4f\033[K\n",				\
-		   has_echoed++? "\033[3F": "", minmax[0], minmax[1], minshift, maxshift, space); \
+		   "space = %.4f\033[K\n"				\
+		   "colormap = %s\033[K\n",				\
+		   has_echoed++? "\033[4F": "", minmax[0], minmax[1],	\
+		   minshift, maxshift,					\
+		   space, colormaps[cmapnum*2+1]);			\
 	if(invert_y) {							\
 	    for(int j=draw_h-1; j>=0; j--, dj+=space) {			\
 		for(int i=0; i<draw_w; i++, di+=space) {		\
@@ -57,7 +83,9 @@ typedef struct {
 		    int value = ( val <  minmax[0]? 0   :		\
 				  val >= minmax[1]? 255 :		\
 				  (val - minmax[0]) * 255 / (minmax[1]-minmax[0]) ); \
-		    SDL_SetRenderDrawColor(rend, value, value, value, 255); \
+		    if(invert_c) value = 255-value;			\
+		    char* c = COLORVALUE(cmapnum,value);		\
+		    SDL_SetRenderDrawColor(rend, c[0], c[1], c[2], 255); \
 		    SDL_RenderDrawPoint(rend, i, j);			\
 		}							\
 		di = 0;							\
@@ -69,12 +97,15 @@ typedef struct {
 		    int value = ( val <  minmax[0]? 0   :		\
 				  val >= minmax[1]? 255 :		\
 				  (val - minmax[0]) * 255 / (minmax[1]-minmax[0]) ); \
-		    SDL_SetRenderDrawColor(rend, value, value, value, 255); \
+		    if(invert_c) value = 255-value;			\
+		    char* c = COLORVALUE(cmapnum,value);		\
+		    SDL_SetRenderDrawColor(rend, c[0], c[1], c[2], 255); \
 		    SDL_RenderDrawPoint(rend, i, j);			\
 		}							\
 		di = 0;							\
 	    }								\
 	}								\
+	draw_colormap();						\
     }
 ALL_TYPES_EXCEPT_STRING
 #undef ONE_TYPE
@@ -129,12 +160,12 @@ static uint_fast64_t time_now_ms() {
 static void set_draw_params() {
     int xlen = NCTVARDIM(*var,xid).len;
     int ylen = NCTVARDIM(*var,yid).len;
-    space    = GET_SPACE(xlen, win_w, ylen, win_h);
+    space    = GET_SPACE(xlen, win_w, ylen, win_h-cmapspace-cmappix);
     draw_w   = xlen / space;
     draw_h   = ylen / space;
     if(fill_on) {
 	draw_w = MIN(win_w, draw_w);
-	draw_h = MIN(win_h, draw_h);
+	draw_h = MIN(win_h-cmapspace-cmappix, draw_h);
     }
 }
 
@@ -149,18 +180,16 @@ static void quit(Arg) {
 static void resized() {
     static uint_fast64_t lasttime;
     uint_fast64_t thistime = time_now_ms();
-    if(thistime-lasttime < 10)
+    if(thistime-lasttime < 16) {
+	call_resized = 1;
 	return;
+    }
+    call_resized = 0;
     lasttime = thistime;
     SDL_DestroyTexture(base);
     base = SDL_CreateTexture(rend, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, win_w, win_h);
     SDL_GetWindowSize(window, &win_w, &win_h);
     set_draw_params();
-    redraw(var);
-}
-
-void invert_y_func(Arg) {
-    invert_y = !invert_y;
     redraw(var);
 }
 
@@ -174,12 +203,8 @@ void shift_max(Arg shift) {
     redraw(var);
 }
 
-void toggle_echo(Arg) {
-    echo_on = !echo_on;
-}
-
-void toggle_fill(Arg) {
-    fill_on = !fill_on;
+void toggle_var(Arg intarg) {
+    *(int*)intarg.v = !*(int*)intarg.v;
     set_draw_params();
     redraw(var);
 }
@@ -188,16 +213,25 @@ void debug_break(Arg) {
     asm("int $3");
 }
 
+void cmap_ichange(Arg jump) {
+    int len = ARRSIZE(colormaps) / 2;
+    cmapnum = (cmapnum+len+jump.i) % len;
+    redraw(var);
+}
+
 Binding keydown_bindings[] = {
-    { SDLK_i,     0,          invert_y_func, {0}        },
-    { SDLK_q,     0,          quit,          {0}        },
-    { SDLK_1,     0,          shift_min,     {.f=-0.02} },
-    { SDLK_1,     KMOD_SHIFT, shift_max,     {.f=-0.02} },
-    { SDLK_2,     0,          shift_min,     {.f=0.02}  },
-    { SDLK_2,     KMOD_SHIFT, shift_max,     {.f=0.02}  },
-    { SDLK_e,     0,          toggle_echo,   {0}        },
-    { SDLK_f,     0,          toggle_fill,   {0}        },
-    { SDLK_PAUSE, KMOD_SHIFT, debug_break,   {0}        },
+    { SDLK_i,     0,          toggle_var,    {.v=&invert_y} },
+    { SDLK_q,     0,          quit,          {0}            },
+    { SDLK_1,     0,          shift_min,     {.f=-0.02}     },
+    { SDLK_1,     KMOD_SHIFT, shift_max,     {.f=-0.02}     },
+    { SDLK_2,     0,          shift_min,     {.f=0.02}      },
+    { SDLK_2,     KMOD_SHIFT, shift_max,     {.f=0.02}      },
+    { SDLK_e,     0,          toggle_var,    {.v=&echo_on}  },
+    { SDLK_f,     0,          toggle_var,    {.v=&fill_on}  },
+    { SDLK_PAUSE, KMOD_SHIFT, debug_break,   {0}            },
+    { SDLK_c,     0,          cmap_ichange,  {.i=1}         },
+    { SDLK_c,     KMOD_SHIFT, cmap_ichange,  {.i=-1}        },
+    { SDLK_c,     KMOD_ALT,   toggle_var,    {.v=&invert_c} },
 };
 
 int get_modstate() {
@@ -231,12 +265,13 @@ static void mainloop() {
 	    if(event.type == SDL_QUIT)
 		quit((Arg){0});
 	    else if(event.type==SDL_WINDOWEVENT && event.window.event==SDL_WINDOWEVENT_RESIZED)
-		resized();
+		call_resized = 1;
 	    else if(event.type==SDL_KEYDOWN)
 		keydown_func();
 	    if(stop) return;
 	}
 	if(stop) return;
+	if(call_resized) resized();
 	SDL_RenderCopy(rend, base, NULL, NULL);
 	SDL_RenderPresent(rend);
 	SDL_Delay(12);
@@ -283,7 +318,8 @@ void nct_plot_var(nct_var* _var) {
     int xlen = NCTVARDIM(*var, xid).len;
     int ylen = NCTVARDIM(*var, yid).len;
   
-    window = SDL_CreateWindow("Figure", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, MIN(xlen,win_w), MIN(ylen,win_h), SDL_WINDOW_RESIZABLE);
+    window = SDL_CreateWindow("Figure", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+			      MIN(xlen, win_w), MIN(ylen+cmapspace+cmappix, win_h), SDL_WINDOW_RESIZABLE);
     rend = SDL_CreateRenderer(window, -1, SDL_RENDERER_TARGETTEXTURE);
     SDL_GetWindowSize(window, &win_w, &win_h);
     base = SDL_CreateTexture(rend, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, win_w, win_h);

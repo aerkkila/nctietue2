@@ -1,6 +1,6 @@
 include config.mk
 cfiles=nctietue2.c internals.h nct_png.c nct_sdl2.c
-hfiles=nctietue2.h nct_operations_and_types.h
+hfiles=nctietue2.h nct_operations_and_types.h colormaps.h
 
 libnctietue2.so: ${cfiles} ${hfiles}
 	gcc -Wall -shared -fpic -g3 -gdwarf-2 -o $@ nctietue2.c -Og
@@ -20,13 +20,14 @@ uninstall:
 
 .PHONY: uninstall
 
-
+colormaps.h: colormaps_h_make.sh colormaps/
+	./colormaps_h_make.sh
 
 testi.out: testi.c ${hfiles}
 	gcc -g3 -gdwarf-2 -Wall -o $@ testi.c `pkg-config --libs nctietue2`
 
 gtktesti.out: nct_gtk.c
-	gcc -Wall -o $@ nct_gtk.c -DGTKTESTI `pkg-config --cflags --libs glib-2.0 gtk4 nctietue2`
+	gcc -g -Wall -o $@ nct_gtk.c -DGTKTESTI `pkg-config --cflags --libs glib-2.0 gtk4 nctietue2`
 
 gtktesti: gtktesti.out
 	./gtktesti.out
