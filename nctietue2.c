@@ -403,7 +403,8 @@ failed:
 
 nct_var* nct_next_truevar(nct_var* var) {
     int len = var->super->nvars;
-    for(int i=0; i<len; i++)
+    int this = nct_get_id_thisvar(var);
+    for(int i=this; i<len; i++)
 	if(nct_get_id_thisdim(var->super->vars[i]) < 0)
 	    return var->super->vars[i];
     return NULL;
