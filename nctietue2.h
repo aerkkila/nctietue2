@@ -191,7 +191,7 @@ ALL_TYPES_EXCEPT_STRING
 extern const char* nct_typenames[];
 
 nct_vset* nct_open_png_gd(nct_vset* dest, char* name); // nct_png
-void      nct_plot_var(nct_vset*, int);                // nct_sdl2
+void      nct_plot_var(nct_var*);                      // nct_sdl2
 
 void      nct_add_varatt_text(nct_var* var, char* name, char* value, unsigned freeable);
 nct_var*  nct_add_dim(nct_vset*, void*, size_t, nc_type, char*);

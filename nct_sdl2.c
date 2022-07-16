@@ -3,25 +3,27 @@
 #include <stdint.h>
 #include "nctietue2.h"
 
-#define MIN(a,b) (a)<=(b)? (a): (b)
-#define GET_SCALE(xlen,win_w,ylen,win_h) MIN((float)(ylen)/(win_h), (float)(xlen)/(win_w))
+#define MIN(a,b) ((a)<=(b)? (a): (b))
+#define MAX(a,b) ((a)>=(b)? (a): (b))
 #define GET_XSCALE_1D(xlen, win_w) (float)(xlen)/(win_w)
 #define ARRSIZE(a) sizeof(a)/sizeof(*(a))
 
 static SDL_Renderer* rend;
 static SDL_Window* window;
 static SDL_Texture* base;
-static int win_w, win_h, xid, yid;
-static int invert_y, stop;
-static double scale;
-static unsigned char color1d_fg[3] = {0, 0, 0};
-static unsigned char color1d_bg[3] = {255, 255, 255};
+static nct_var* var;
+static int win_w, win_h, xid, yid, draw_w, draw_h;
+static int invert_y, stop, echo_on, has_echoed, fill_on;
+static float space, minshift, maxshift;
+static unsigned char color_fg[3] = {1, 1, 1};
+static unsigned char color_bg[3] = {0, 0, 0};
 static void (*redraw)(nct_var*);
 
 SDL_Event event;
 
 typedef union {
     void* v;
+    float f;
 } Arg;
 
 typedef struct {
@@ -31,26 +33,42 @@ typedef struct {
     Arg arg;
 } Binding;
 
-#define ONE_TYPE(nctype, b, ctype)					\
+#define ONE_TYPE(nctype, form, ctype)					\
     static void draw2d_##nctype(nct_var* var)				\
     {									\
 	int xlen = NCTVARDIM(*var,xid).len;				\
 	double di=0, dj=0;						\
-	ctype minmax[2];						\
+	ctype minmax[2], range;						\
 	nct_varminmax_##nctype(var, minmax);				\
+	range = minmax[1]-minmax[0];					\
+	minmax[0] += range*minshift;					\
+	minmax[1] += range*maxshift;					\
+	SDL_SetRenderDrawColor(rend, color_bg[0], color_bg[1], color_bg[2], 255); \
+	SDL_RenderClear(rend);						\
+	if(echo_on)							\
+	    printf("%smin %" #form ", max %" #form "\033[K\n"		\
+		   "minshift %.4f, maxshift %.4f\033[K\n"		\
+		   "space %.4f\033[K\n",				\
+		   has_echoed++? "\033[3F": "", minmax[0], minmax[1], minshift, maxshift, space); \
 	if(invert_y) {							\
-	    for(int j=win_h-1; j>=0; j--, dj+=scale) {			\
-		for(int i=0; i<win_w; i++, di+=scale) {			\
-		    int value = (((ctype*)var->data)[(int)dj*xlen + (int)di] - minmax[0]) * 255 / (minmax[1]-minmax[0]); \
+	    for(int j=draw_h-1; j>=0; j--, dj+=space) {			\
+		for(int i=0; i<draw_w; i++, di+=space) {		\
+		    ctype val = ((ctype*)var->data)[(int)dj*xlen + (int)di]; \
+		    int value = ( val <  minmax[0]? 0   :		\
+				  val >= minmax[1]? 255 :		\
+				  (val - minmax[0]) * 255 / (minmax[1]-minmax[0]) ); \
 		    SDL_SetRenderDrawColor(rend, value, value, value, 255); \
 		    SDL_RenderDrawPoint(rend, i, j);			\
 		}							\
 		di = 0;							\
 	    }								\
 	} else {							\
-	    for(int j=0; j<win_h; j++, dj+=scale) {			\
-		for(int i=0; i<win_w; i++, di+=scale) {			\
-		    int value = (((ctype*)var->data)[(int)dj*xlen + (int)di] - minmax[0]) * 255 / (minmax[1]-minmax[0]); \
+	    for(int j=0; j<draw_h; j++, dj+=space) {			\
+		for(int i=0; i<draw_w; i++, di+=space) {		\
+		    ctype val = ((ctype*)var->data)[(int)dj*xlen + (int)di]; \
+		    int value = ( val <  minmax[0]? 0   :		\
+				  val >= minmax[1]? 255 :		\
+				  (val - minmax[0]) * 255 / (minmax[1]-minmax[0]) ); \
 		    SDL_SetRenderDrawColor(rend, value, value, value, 255); \
 		    SDL_RenderDrawPoint(rend, i, j);			\
 		}							\
@@ -64,13 +82,13 @@ ALL_TYPES_EXCEPT_STRING
 #define ONE_TYPE(nctype, b, ctype)					\
     static void draw1d_##nctype(nct_var* var)				\
     {									\
-	SDL_SetRenderDrawColor(rend, color1d_bg[0], color1d_bg[1], color1d_bg[2], 255); \
+	SDL_SetRenderDrawColor(rend, color_bg[0], color_bg[1], color_bg[2], 255); \
 	SDL_RenderClear(rend);						\
 	double di=0;							\
 	ctype minmax[2];						\
 	nct_varminmax_##nctype(var, minmax);				\
-	SDL_SetRenderDrawColor(rend, color1d_fg[0], color1d_fg[1], color1d_fg[2], 255); \
-	for(int i=0; i<win_w; i++, di+=scale) {				\
+	SDL_SetRenderDrawColor(rend, color_fg[0], color_fg[1], color_fg[2], 255); \
+	for(int i=0; i<win_w; i++, di+=space) {				\
 	    int y = (((ctype*)var->data)[(int)di] - minmax[0]) * win_h / (minmax[1]-minmax[0]); \
 	    SDL_RenderDrawPoint(rend, i, y);				\
 	}								\
@@ -79,17 +97,11 @@ ALL_TYPES_EXCEPT_STRING
 #undef ONE_TYPE
 
 #define ONE_TYPE(nctype,b,ctype) [nctype]=draw2d_##nctype,
-static void (*drawfunctions_2d[])(nct_var*) =
-{
-    ALL_TYPES_EXCEPT_STRING
-};
+static void (*drawfunctions_2d[])(nct_var*) = {ALL_TYPES_EXCEPT_STRING};
 #undef ONE_TYPE
 
 #define ONE_TYPE(nctype,b,ctype) [nctype]=draw1d_##nctype,
-static void (*drawfunctions_1d[])(nct_var*) =
-{
-    ALL_TYPES_EXCEPT_STRING
-};
+static void (*drawfunctions_1d[])(nct_var*) = {ALL_TYPES_EXCEPT_STRING};
 #undef ONE_TYPE
 
 static void redraw_2d(nct_var* var) {
@@ -110,7 +122,23 @@ static uint_fast64_t time_now_ms() {
     return t.tv_sec*1000 + t.tv_usec/1000;
 }
 
-static void quit(Arg unused) {
+#define GET_SPACE_FILL(xlen,win_w,ylen,win_h)    MIN((float)(ylen)/(win_h), (float)(xlen)/(win_w))
+#define GET_SPACE_NONFILL(xlen,win_w,ylen,win_h) MAX((float)(ylen)/(win_h), (float)(xlen)/(win_w))
+#define GET_SPACE(a,b,c,d) (fill_on? GET_SPACE_FILL(a,b,c,d): GET_SPACE_NONFILL(a,b,c,d))
+
+static void set_draw_params() {
+    int xlen = NCTVARDIM(*var,xid).len;
+    int ylen = NCTVARDIM(*var,yid).len;
+    space    = GET_SPACE(xlen, win_w, ylen, win_h);
+    draw_w   = xlen / space;
+    draw_h   = ylen / space;
+    if(fill_on) {
+	draw_w = MIN(win_w, draw_w);
+	draw_h = MIN(win_h, draw_h);
+    }
+}
+
+static void quit(Arg) {
     stop = 1;
     SDL_DestroyTexture(base);
     SDL_DestroyRenderer(rend);
@@ -118,29 +146,58 @@ static void quit(Arg unused) {
     SDL_Quit();
 }
 
-static nct_var* var;
-
 static void resized() {
     static uint_fast64_t lasttime;
     uint_fast64_t thistime = time_now_ms();
-    if(thistime-lasttime < 20)
+    if(thistime-lasttime < 10)
 	return;
     lasttime = thistime;
     SDL_DestroyTexture(base);
     base = SDL_CreateTexture(rend, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, win_w, win_h);
     SDL_GetWindowSize(window, &win_w, &win_h);
-    scale = GET_SCALE(NCTVARDIM(*var,xid).len, win_w, NCTVARDIM(*var,yid).len, win_h);
+    set_draw_params();
     redraw(var);
 }
 
-void invert_y_func(Arg unused) {
+void invert_y_func(Arg) {
     invert_y = !invert_y;
     redraw(var);
 }
 
+void shift_min(Arg shift) {
+    minshift += shift.f;
+    redraw(var);
+}
+
+void shift_max(Arg shift) {
+    maxshift += shift.f;
+    redraw(var);
+}
+
+void toggle_echo(Arg) {
+    echo_on = !echo_on;
+}
+
+void toggle_fill(Arg) {
+    fill_on = !fill_on;
+    set_draw_params();
+    redraw(var);
+}
+
+void debug_break(Arg) {
+    asm("int $3");
+}
+
 Binding keydown_bindings[] = {
-    { SDLK_i, KMOD_SHIFT, invert_y_func, {0} },
-    { SDLK_q, 0,          quit,          {0} },
+    { SDLK_i,     0,          invert_y_func, {0}        },
+    { SDLK_q,     0,          quit,          {0}        },
+    { SDLK_1,     0,          shift_min,     {.f=-0.02} },
+    { SDLK_1,     KMOD_SHIFT, shift_max,     {.f=-0.02} },
+    { SDLK_2,     0,          shift_min,     {.f=0.02}  },
+    { SDLK_2,     KMOD_SHIFT, shift_max,     {.f=0.02}  },
+    { SDLK_e,     0,          toggle_echo,   {0}        },
+    { SDLK_f,     0,          toggle_fill,   {0}        },
+    { SDLK_PAUSE, KMOD_SHIFT, debug_break,   {0}        },
 };
 
 int get_modstate() {
@@ -193,21 +250,21 @@ static void _plot_var_1d(nct_var* var) {
     rend = SDL_CreateRenderer(window, -1, SDL_RENDERER_TARGETTEXTURE);
     SDL_GetWindowSize(window, &win_w, &win_h);
     base = SDL_CreateTexture(rend, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, win_w, win_h);
-    scale = GET_XSCALE_1D(xlen, win_w);
+    space = GET_XSCALE_1D(xlen, win_w);
 
     redraw_1d(var);
 
     mainloop();
 }
 
-void nct_plot_var(nct_vset* vset, int varid) {
+void nct_plot_var(nct_var* _var) {
+    var = _var;
     if(SDL_Init(SDL_INIT_VIDEO)) {
 	fprintf(stderr, "%sError in SDL_INIT:%s %s\n", nct_error_color, SDL_GetError(), nct_default_color);
 	return;
     }
     SDL_Event event;
     while(SDL_PollEvent(&event));
-    var = vset->vars[varid];
     SDL_DisplayMode dm;
     if(SDL_GetCurrentDisplayMode(0, &dm)) {
 	fprintf(stderr, "%sError in getting monitor size%s: %s\n", nct_error_color, SDL_GetError(), nct_default_color);
@@ -230,8 +287,9 @@ void nct_plot_var(nct_vset* vset, int varid) {
     rend = SDL_CreateRenderer(window, -1, SDL_RENDERER_TARGETTEXTURE);
     SDL_GetWindowSize(window, &win_w, &win_h);
     base = SDL_CreateTexture(rend, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, win_w, win_h);
-    scale = GET_SCALE(xlen, win_w, ylen, win_h);
+    set_draw_params();
 
+    stop = has_echoed = 0;
     redraw(var);
 
     mainloop();
