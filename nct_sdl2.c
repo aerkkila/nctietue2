@@ -78,12 +78,13 @@ void draw_colormap() {
 	SDL_RenderClear(rend);						\
 	if(echo_on)							\
 	    printf("%s%s%s%s: min %s%" #form "%s, max %s%" #form "%s\033[K\n" \
-		   "xdim: %s%s%s, ydim: %s%s%s\n"			\
+		   "x: %s%s(%zu)%s, y: %s%s(%zu)%s\n"			\
 		   "minshift %s%.4f%s, maxshift %s%.4f%s\033[K\n"	\
 		   "space = %s%.4f%s\033[K\n"				\
 		   "colormap = %s%s%s\033[K\n",				\
 		   has_echoed++? "\033[5F": "", A,var->name,B, A,minmax[0],B, A,minmax[1],B, \
-		   A,NCTVARDIM(*var,xid).name,B, A,NCTVARDIM(*var,yid).name,B, \
+		   A,NCTVARDIM(*var,xid).name,NCTVARDIM(*var,xid).len,B, \
+		   A,NCTVARDIM(*var,yid).name,NCTVARDIM(*var,yid).len,B, \
 		   A,minshift,B, A,maxshift,B,				\
 		   A,space,B, A,colormaps[cmapnum*2+1],B);		\
 	if(invert_y) {							\
