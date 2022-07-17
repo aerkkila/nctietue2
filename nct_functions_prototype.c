@@ -62,8 +62,8 @@ nct_var* nct_varmean_first_##nctype(nct_var* var) {
     return nct_var_dropdim_first(var);
 }
 
-#if nctype==NC_FLOAT || nctype==NC_DOUBLE
 nct_var* nct_varmeannan_first_##nctype(nct_var* var) {
+#if nctype==NC_FLOAT || nctype==NC_DOUBLE
     size_t zerolen = NCTVARDIM(*var,0).len;
     size_t new_len = nct_get_varlen(var) / zerolen;
     for(size_t i=0; i<new_len; i++) {
@@ -79,5 +79,7 @@ nct_var* nct_varmeannan_first_##nctype(nct_var* var) {
 	((ctype*)var->data)[i] = new_value/count;
     }
     return nct_var_dropdim_first(var);
-}
+#else
+    return nct_varmean_first_##nctype(var);
 #endif
+}
