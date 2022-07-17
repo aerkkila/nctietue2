@@ -18,6 +18,7 @@ static int cmapnum=18, cmappix=30, cmapspace=10, call_resized, call_redraw;
 static float space, minshift, maxshift;
 static unsigned char color_fg[3] = {255, 255, 255};
 static unsigned char color_bg[3] = {0, 0, 0};
+static const char* echo_highlight = "\033[1;93m";
 static void (*redraw)(nct_var*);
 
 static void redraw_1d(nct_var* var);
@@ -61,6 +62,8 @@ void draw_colormap() {
 	
 }
 
+#define A echo_highlight
+#define B nct_default_color
 #define ONE_TYPE(nctype, form, ctype)					\
     static void draw2d_##nctype(nct_var* var)				\
     {									\
@@ -74,13 +77,15 @@ void draw_colormap() {
 	SDL_SetRenderDrawColor(rend, color_bg[0], color_bg[1], color_bg[2], 255); \
 	SDL_RenderClear(rend);						\
 	if(echo_on)							\
-	    printf("%s%s: min %" #form ", max %" #form "\033[K\n"	\
-		   "minshift %.4f, maxshift %.4f\033[K\n"		\
-		   "space = %.4f\033[K\n"				\
-		   "colormap = %s\033[K\n",				\
-		   has_echoed++? "\033[4F": "", var->name, minmax[0], minmax[1], \
-		   minshift, maxshift,					\
-		   space, colormaps[cmapnum*2+1]);			\
+	    printf("%s%s%s%s: min %s%" #form "%s, max %s%" #form "%s\033[K\n" \
+		   "xdim: %s%s%s, ydim: %s%s%s\n"			\
+		   "minshift %s%.4f%s, maxshift %s%.4f%s\033[K\n"	\
+		   "space = %s%.4f%s\033[K\n"				\
+		   "colormap = %s%s%s\033[K\n",				\
+		   has_echoed++? "\033[5F": "", A,var->name,B, A,minmax[0],B, A,minmax[1],B, \
+		   A,NCTVARDIM(*var,xid).name,B, A,NCTVARDIM(*var,yid).name,B, \
+		   A,minshift,B, A,maxshift,B,				\
+		   A,space,B, A,colormaps[cmapnum*2+1],B);		\
 	if(invert_y) {							\
 	    for(int j=draw_h-1; j>=0; j--, dj+=space) {			\
 		for(int i=0; i<draw_w; i++, di+=space) {		\
@@ -114,6 +119,8 @@ void draw_colormap() {
     }
 ALL_TYPES_EXCEPT_STRING
 #undef ONE_TYPE
+#undef A
+#undef B
 
 #define ONE_TYPE(nctype, b, ctype)					\
     static void draw1d_##nctype(nct_var* var)				\
