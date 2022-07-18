@@ -205,7 +205,7 @@ static void set_draw_params() {
     }
 }
 
-static void quit(Arg) {
+static void quit(Arg _) {
     stop = 1;
     SDL_DestroyTexture(base);
     SDL_DestroyRenderer(rend);
@@ -245,7 +245,7 @@ void toggle_var(Arg intarg) {
     redraw(var);
 }
 
-void debug_break(Arg) {
+void debug_break(Arg _) {
     asm("int $3");
 }
 
