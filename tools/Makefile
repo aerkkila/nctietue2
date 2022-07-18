@@ -1,5 +1,5 @@
 include ../config.mk
-tiedostot=nct_info nct_add_similars nct_plot
+tiedostot=nct_plot
 
 all: ${tiedostot}
 
