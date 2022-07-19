@@ -12,7 +12,7 @@ static SDL_Renderer* rend;
 static SDL_Window* window;
 static SDL_Texture* base;
 static nct_var* var;
-static int win_w, win_h, xid, yid, draw_w, draw_h;
+static int win_w, win_h, xid, yid, zid, draw_w, draw_h, znum;
 static int invert_y, invert_c, stop, echo_on=1, has_echoed, fill_on;
 static int cmapnum=18, cmappix=30, cmapspace=10, call_resized, call_redraw;
 static float space, minshift, maxshift;
@@ -58,16 +58,29 @@ void draw_colormap() {
 	    SDL_SetRenderDrawColor(rend, c[0], c[1], c[2], 255);
 	    for(int j=draw_h+cmapspace; j<draw_h+cmapspace+cmappix; j++)
 		SDL_RenderDrawPoint(rend, i, j);
-	}
-	
+	}	
 }
+
+#if 0
+	if(echo_on)							\
+	    printf("%s%s%s%s: min %s%" #form "%s, max %s%" #form "%s\033[K\n" \
+		   "x: %s%s(%zu)%s, y: %s%s(%zu)%s, z: %s%s(%i/%zu)%s\n" \
+		   "minshift %s%.4f%s, maxshift %s%.4f%s\033[K\n",	\
+		   "space = %s%.4f%s\033[K\n"				\
+		   "colormap = %s%s%s\033[K\n",				\
+		   has_echoed++? "\033[5F": "", A,var->name,B, A,minmax[0],B, A,minmax[1],B, \
+		   A,NCTVARDIM(*var, xid).name,NCTVARDIM(*var, xid).len,B, \
+		   A,NCTVARDIM(*var, yid).name,NCTVARDIM(*var, yid).len,B, \
+		   A,minshift,B, A,maxshift,B,				\
+		   A,space,B, A,colormaps[cmapnum*2+1],B);
+#endif
 
 #define A echo_highlight
 #define B nct_default_color
 #define ONE_TYPE(nctype, form, ctype)					\
     static void draw2d_##nctype(nct_var* var)				\
     {									\
-	int xlen = NCTVARDIM(*var,xid).len;				\
+	int xlen = NCTVARDIM(*var, xid).len;				\
 	float di=0, dj=0;						\
 	ctype minmax[2], range;						\
 	nct_varminmax_##nctype(var, minmax);				\
@@ -76,17 +89,22 @@ void draw_colormap() {
 	minmax[1] += range*maxshift;					\
 	SDL_SetRenderDrawColor(rend, color_bg[0], color_bg[1], color_bg[2], 255); \
 	SDL_RenderClear(rend);						\
-	if(echo_on)							\
+	if(echo_on) {							\
 	    printf("%s%s%s%s: min %s%" #form "%s, max %s%" #form "%s\033[K\n" \
-		   "x: %s%s(%zu)%s, y: %s%s(%zu)%s\n"			\
+		   "x: %s%s(%zu)%s, y: %s%s(%zu)%s\033[K\033[s\n"	\
 		   "minshift %s%.4f%s, maxshift %s%.4f%s\033[K\n"	\
 		   "space = %s%.4f%s\033[K\n"				\
 		   "colormap = %s%s%s\033[K\n",				\
-		   has_echoed++? "\033[5F": "", A,var->name,B, A,minmax[0],B, A,minmax[1],B, \
-		   A,NCTVARDIM(*var,xid).name,NCTVARDIM(*var,xid).len,B, \
-		   A,NCTVARDIM(*var,yid).name,NCTVARDIM(*var,yid).len,B, \
+		   has_echoed++? "\033[5F": "", A,var->name,B,		\
+		   A,minmax[0],B, A,minmax[1],B,			\
+		   A,NCTVARDIM(*var, xid).name,NCTVARDIM(*var, xid).len,B, \
+		   A,NCTVARDIM(*var, yid).name,NCTVARDIM(*var, yid).len,B, \
 		   A,minshift,B, A,maxshift,B,				\
 		   A,space,B, A,colormaps[cmapnum*2+1],B);		\
+	    if(zid>=0)							\
+		printf("\033[u z: %s%s(%i/%zu)%s\n\033[2B\n",		\
+		       A,NCTVARDIM(*var, zid).name,znum,NCTVARDIM(*var, zid).len,B); \
+	}								\
 	if(invert_y) {							\
 	    for(int j=draw_h-1; j>=0; j--, dj+=space) {			\
 		for(int i=0; i<draw_w; i++, di+=space) {		\
@@ -149,9 +167,10 @@ static void (*drawfunctions_1d[])(nct_var*) = {ALL_TYPES_EXCEPT_STRING};
 #undef ONE_TYPE
 
 void set_xid_and_yid() {
-    xid = var->ndims-1;
-    yid = var->ndims-2;
-    if(yid < 0)
+     xid = var->ndims-1;
+     yid = var->ndims-2;
+     zid = var->ndims-3;
+    if( yid < 0)
 	redraw = redraw_1d;
     else
 	redraw = redraw_2d;
@@ -189,16 +208,16 @@ static void redraw_1d(nct_var* var) {
 #define GET_SPACE(a,b,c,d) (fill_on? GET_SPACE_FILL(a,b,c,d): GET_SPACE_NONFILL(a,b,c,d))
 
 static void set_draw_params() {
-    int xlen = NCTVARDIM(*var,xid).len, ylen;
-    if(yid>=0) {
-	ylen = NCTVARDIM(*var,yid).len;
-	space    = GET_SPACE(xlen, win_w, ylen, win_h-cmapspace-cmappix);
+    int xlen = NCTVARDIM(*var, xid).len, ylen;
+    if( yid>=0) {
+	ylen  = NCTVARDIM(*var, yid).len;
+	space = GET_SPACE(xlen, win_w, ylen, win_h-cmapspace-cmappix);
     } else {
 	space = (float)(xlen)/(win_w);
-	ylen = win_h * space;
+	ylen  = win_h * space;
     }
-    draw_w   = xlen / space;
-    draw_h   = ylen / space;
+    draw_w = xlen / space;
+    draw_h = ylen / space;
     if(fill_on) {
 	draw_w = MIN(win_w, draw_w);
 	draw_h = MIN(win_h-cmapspace-cmappix, draw_h);
@@ -271,6 +290,11 @@ void var_ichange(Arg jump) {
     redraw(var);
 }
 
+void inc_znum(Arg intarg) {
+    znum += *(int*)intarg.v;
+    redraw(var);
+}
+
 Binding keydown_bindings[] = {
     { SDLK_i,     0,          toggle_var,    {.v=&invert_y} },
     { SDLK_q,     0,          quit,          {0}            },
@@ -285,6 +309,8 @@ Binding keydown_bindings[] = {
     { SDLK_c,     KMOD_SHIFT, cmap_ichange,  {.i=-1}        },
     { SDLK_c,     KMOD_ALT,   toggle_var,    {.v=&invert_c} },
     { SDLK_v,     0,          var_ichange,   {.i=1}         },
+    { SDLK_RIGHT, 0,          inc_znum,      {.i=1}         },
+    { SDLK_LEFT,  0,          inc_znum,      {.i=-1}        },
 };
 
 int get_modstate() {
@@ -349,9 +375,9 @@ void nct_plot_var(nct_var* _var) {
 	win_h = dm.h;
     }
     set_xid_and_yid();
-    int xlen = NCTVARDIM(*var, xid).len, ylen;
-    if(yid>=0)
-	ylen = NCTVARDIM(*var, yid).len;
+    int xlen = NCTVARDIM(*var,  xid).len, ylen;
+    if( yid>=0)
+	ylen = NCTVARDIM(*var,  yid).len;
     else
 	ylen = 400;
   
