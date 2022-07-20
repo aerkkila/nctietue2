@@ -653,6 +653,17 @@ nct_vset* nct_vset_isel(nct_vset* vset, int dimid, size_t ind0, size_t ind1) {
     return vset;
 }
 
+nct_var* nct_vset_rename(nct_vset* vset, const char* name0, char* name1) {
+    nct_var* var = &NCTVAR(*vset,name0);
+    if(!var)
+	return NULL;
+    if(var->freeable_name)
+	free(var->name);
+    var->name = name1;
+    var->freeable_name = 0;
+    return var;
+}
+
 nct_vset* nct_vsetcpy(const nct_vset* src) {
     nct_vset* dest = calloc(1, sizeof(nct_vset));
     return nct_vsetcpy_gd(dest, src);

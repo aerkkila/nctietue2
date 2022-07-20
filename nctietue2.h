@@ -243,6 +243,7 @@ nct_any   nct_varmin(nct_var*);
 nct_anyd  nct_varmin_anyd(nct_var*);
 void*     nct_varminmax(nct_var*, void*);
 nct_vset* nct_vset_isel(nct_vset* vset, int dimid, size_t ind0, size_t ind1);
+nct_var*  nct_vset_rename(nct_vset* vset, const char* name0, char* name1);
 nct_vset* nct_vsetcpy(const nct_vset* src);
 nct_vset* nct_vsetcpy_gd(nct_vset* dest, const nct_vset* src);
 void      nct_write_ncfile(const nct_vset* src, const char* name);
