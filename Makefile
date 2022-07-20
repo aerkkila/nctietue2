@@ -1,12 +1,15 @@
 include config.mk
-cfiles=nctietue2.c internals.h nct_png.c nct_sdl2.c
-hfiles=nctietue2.h nct_operations_and_types.h colormaps.h
+cfiles=nctietue2.c internals.h nct_png.c nct_sdl2.c nct_functions.h colormaps.h
+hfiles=nctietue2.h
 
-libnctietue2.so: ${cfiles} ${hfiles}
+libnctietue2.so: ${cfiles} nctietue2.h
 	gcc -Wall -shared -fpic -g3 -gdwarf-2 -o $@ nctietue2.c -Og
 
 nctietue2.pc: nctietue2.pc.1 config.mk
 	cat config.mk nctietue2.pc.1 > nctietue2.pc
+
+nct_functions.h: nct_functions_make.sh nct_functions_prototype.c
+	./nct_functions_make.sh
 
 install: libnctietue2.so nctietue2.pc ${hfiles}
 	cp ${hfiles} ${includedir}
