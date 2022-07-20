@@ -69,9 +69,7 @@ static nct_var* _nct_var_isel(nct_var* var, int dimid, size_t ind0, size_t ind1)
 	}
     return var;
 FOUND:;
-    size_t len_after = nctypelen(var->xtype); //interval to step given coordinate
-    for(int i=id+1; i<var->ndims; i++)
-	len_after *= NCTVARDIM(*var,i).len;
+    size_t len_after = nctypelen(var->xtype) * nct_vardim_steplen(var, id); //interval to step given coordinate
     size_t length_around = len_after * NCTVARDIM(*var,id).len;
     size_t n_blocks = 1;
     for(int i=0; i<id; i++)

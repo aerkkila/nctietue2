@@ -44,6 +44,7 @@ struct nct_vset {
     int attcapacity;
     nct_att* atts;
     int ncid;
+    int owner;
 };
 
 union nct_any {
@@ -233,6 +234,7 @@ nct_var*  nct_to_var(void* arr, size_t len, nc_type xtype, char* name);
 nct_var*  nct_to_var_gd(nct_var* dest, void* arr, size_t len, nc_type xtype, char* name);
 nct_var*  nct_varcpy(nct_var* src);
 nct_var*  nct_varcpy_gd(nct_var* dest, nct_var* src);
+size_t    nct_vardim_steplen(nct_var* var, int dimnum);
 nct_var*  nct_vardup(nct_var* src, char*);
 nct_var*  nct_var_dropdim_first(nct_var*);
 nct_var*  nct_varmean_first(nct_var*);

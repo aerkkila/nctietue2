@@ -216,6 +216,8 @@ void nct_free_vset(nct_vset* vs) {
     free(vs->vars);
     memset(vs->dims, 0, sizeof(void*)*vs->ndims);
     free(vs->dims);
+    if(vs->owner)
+	free(vs);
 }
 
 int nct_get_dimid(nct_vset* vset, const char* name) {
@@ -424,7 +426,9 @@ void nct_print_vset(nct_vset* vs) {
 }
 
 nct_vset* nct_read_ncfile(const char* restrict filename) {
-    return nct_read_ncfile_gd(calloc(1,sizeof(nct_vset)), filename);
+    nct_vset* v = calloc(1,sizeof(nct_vset));
+    v->owner = 1;
+    return nct_read_ncfile_gd(v, filename);
 }
 
 nct_vset* nct_read_ncfile_gd(nct_vset* dest, const char* restrict filename) {
@@ -442,7 +446,9 @@ nct_vset* nct_read_ncfile_gd0(nct_vset* dest, const char* restrict filename) {
 }
 
 nct_vset* nct_read_ncfile_info(const char* restrict filename) {
-    return nct_read_ncfile_info_gd(calloc(1,sizeof(nct_vset)), filename);
+    nct_vset* v = calloc(1,sizeof(nct_vset));
+    v->owner = 1;
+    return nct_read_ncfile_info_gd(v, filename);
 }
 
 nct_vset* nct_read_ncfile_info_gd(nct_vset* dest, const char* restrict filename) {
@@ -514,6 +520,13 @@ nct_var* nct_varcpy_gd(nct_var* dest, nct_var* src) {
 	memcpy(attdest->value, attsrc->value, attsrc->len*nctypelen(attsrc->xtype));
     }
     return dest;
+}
+
+size_t nct_vardim_steplen(nct_var* var, int dimnum) {
+    size_t steplen = 1;
+    for(int i=dimnum+1; i<var->ndims; i++)
+	steplen *= NCTVARDIM(*var,i).len;
+    return steplen;
 }
 
 nct_var* nct_vardup(nct_var* src, char* name) {

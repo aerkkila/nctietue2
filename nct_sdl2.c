@@ -13,6 +13,7 @@ static SDL_Window* window;
 static SDL_Texture* base;
 static nct_var* var;
 static int win_w, win_h, xid, yid, zid, draw_w, draw_h, znum;
+static size_t stepsize_z;
 static int invert_y, invert_c, stop, echo_on=1, has_echoed, fill_on;
 static int cmapnum=18, cmappix=30, cmapspace=10, call_resized, call_redraw;
 static float space, minshift, maxshift;
@@ -61,20 +62,6 @@ void draw_colormap() {
 	}	
 }
 
-#if 0
-	if(echo_on)							\
-	    printf("%s%s%s%s: min %s%" #form "%s, max %s%" #form "%s\033[K\n" \
-		   "x: %s%s(%zu)%s, y: %s%s(%zu)%s, z: %s%s(%i/%zu)%s\n" \
-		   "minshift %s%.4f%s, maxshift %s%.4f%s\033[K\n",	\
-		   "space = %s%.4f%s\033[K\n"				\
-		   "colormap = %s%s%s\033[K\n",				\
-		   has_echoed++? "\033[5F": "", A,var->name,B, A,minmax[0],B, A,minmax[1],B, \
-		   A,NCTVARDIM(*var, xid).name,NCTVARDIM(*var, xid).len,B, \
-		   A,NCTVARDIM(*var, yid).name,NCTVARDIM(*var, yid).len,B, \
-		   A,minshift,B, A,maxshift,B,				\
-		   A,space,B, A,colormaps[cmapnum*2+1],B);
-#endif
-
 #define A echo_highlight
 #define B nct_default_color
 #define ONE_TYPE(nctype, form, ctype)					\
@@ -87,6 +74,7 @@ void draw_colormap() {
 	range = minmax[1]-minmax[0];					\
 	minmax[0] += range*minshift;					\
 	minmax[1] += range*maxshift;					\
+	size_t offset = znum*stepsize_z;				\
 	SDL_SetRenderDrawColor(rend, color_bg[0], color_bg[1], color_bg[2], 255); \
 	SDL_RenderClear(rend);						\
 	if(echo_on) {							\
@@ -103,12 +91,12 @@ void draw_colormap() {
 		   A,space,B, A,colormaps[cmapnum*2+1],B);		\
 	    if(zid>=0)							\
 		printf("\033[u z: %s%s(%i/%zu)%s\n\033[2B\n",		\
-		       A,NCTVARDIM(*var, zid).name,znum,NCTVARDIM(*var, zid).len,B); \
+		       A,NCTVARDIM(*var, zid).name,znum+1,NCTVARDIM(*var, zid).len,B); \
 	}								\
 	if(invert_y) {							\
 	    for(int j=draw_h-1; j>=0; j--, dj+=space) {			\
 		for(int i=0; i<draw_w; i++, di+=space) {		\
-		    ctype val = ((ctype*)var->data)[(int)dj*xlen + (int)di]; \
+		    ctype val = ((ctype*)var->data)[offset + (size_t)dj*xlen + (size_t)di]; \
 		    int value = ( val <  minmax[0]? 0   :		\
 				  val >= minmax[1]? 255 :		\
 				  (val - minmax[0]) * 255 / (minmax[1]-minmax[0]) ); \
@@ -122,7 +110,7 @@ void draw_colormap() {
 	} else {							\
 	    for(int j=0; j<draw_h; j++, dj+=space) {			\
 		for(int i=0; i<draw_w; i++, di+=space) {		\
-		    ctype val = ((ctype*)var->data)[(int)dj*xlen + (int)di]; \
+		    ctype val = ((ctype*)var->data)[offset + (size_t)dj*xlen + (size_t)di]; \
 		    int value = ( val <  minmax[0]? 0   :		\
 				  val >= minmax[1]? 255 :		\
 				  (val - minmax[0]) * 255 / (minmax[1]-minmax[0]) ); \
@@ -222,6 +210,8 @@ static void set_draw_params() {
 	draw_w = MIN(win_w, draw_w);
 	draw_h = MIN(win_h-cmapspace-cmappix, draw_h);
     }
+    if(zid>=0)
+	stepsize_z = nct_vardim_steplen(var, zid);
 }
 
 static void quit(Arg _) {
@@ -291,7 +281,8 @@ void var_ichange(Arg jump) {
 }
 
 void inc_znum(Arg intarg) {
-    znum += *(int*)intarg.v;
+    size_t zlen = NCTVARDIM(*var,zid).len;
+    znum = (znum + zlen + intarg.i) % zlen;
     redraw(var);
 }
 
@@ -314,7 +305,7 @@ Binding keydown_bindings[] = {
 };
 
 int get_modstate() {
-    /*makes modstate side-insensitive*/
+    /* makes modstate side-insensitive and removes other modifiers than [alt,ctrl,gui,shift] */
     int mod = 0;
     int mod0 = SDL_GetModState();
     if(mod0 & KMOD_CTRL)
