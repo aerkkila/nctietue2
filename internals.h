@@ -42,9 +42,9 @@ static nct_vset* _nct_read_var_info(nct_vset *vset, int varid) {
     dest->data             = NULL;
     memcpy(dest->dimids, dimids, ndims*sizeof(int));
     for(int i=0; i<natts; i++) {
-	nct_att* att= dest->atts+i;
 	NCFUNK(nc_inq_attname, vset->ncid, varid, i, name);
 	NCFUNK(nc_inq_att, vset->ncid, varid, name, &xtype, &len);
+	nct_att* att  = dest->atts+i;
 	att->name     = strdup(name);
 	att->value    = malloc(len*nctypelen(xtype) + (xtype==NC_CHAR));
 	att->xtype    = xtype;
@@ -52,6 +52,10 @@ static nct_vset* _nct_read_var_info(nct_vset *vset, int varid) {
 	att->freeable = 3;
 	NCFUNK(nc_get_att, vset->ncid, varid, name, att->value);
 	if(att->xtype == NC_CHAR) {
+	    if(!att->len) {
+		att->value = '\0';
+		continue;
+	    }
 	    if(((char*)att->value)[len-1] != '\0')
 		att->len++;
 	    ((char*)att->value)[len-1] = '\0';
