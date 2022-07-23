@@ -167,8 +167,8 @@ static void resized() {
     call_resized = 0;
     lasttime = thistime;
     SDL_DestroyTexture(base);
-    base = SDL_CreateTexture(rend, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, win_w, win_h);
     SDL_GetWindowSize(window, &win_w, &win_h);
+    base = SDL_CreateTexture(rend, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, win_w, win_h);
     set_draw_params();
     redraw(var);
 }
