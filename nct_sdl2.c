@@ -108,7 +108,7 @@ static uint_fast64_t time_now_ms() {
 static void redraw_2d(nct_var* var) {
     static uint_fast64_t lasttime;
     uint_fast64_t thistime = time_now_ms();
-    if(thistime-lasttime < 16) {
+    if(thistime-lasttime < 10) {
 	call_redraw = 1;
 	return;
     }
@@ -280,7 +280,7 @@ static void mainloop() {
 	if(call_redraw) redraw(var);
 	SDL_RenderCopy(rend, base, NULL, NULL);
 	SDL_RenderPresent(rend);
-	SDL_Delay(12);
+	SDL_Delay(8);
     }
 }
 
