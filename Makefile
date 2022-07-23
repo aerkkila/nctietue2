@@ -8,8 +8,8 @@ libnctietue2.so: ${cfiles} nctietue2.h
 nctietue2.pc: nctietue2.pc.1 config.mk
 	cat config.mk nctietue2.pc.1 > nctietue2.pc
 
-nct_functions.h: nct_functions_make.sh nct_functions_prototype.c
-	./nct_functions_make.sh
+nct_functions.h nct_draw.h: nct_functions_make.pl nct_functions_prototype.c nct_draw_prototype.c
+	./nct_functions_make.pl
 
 install: libnctietue2.so nctietue2.pc ${hfiles}
 	cp ${hfiles} ${includedir}

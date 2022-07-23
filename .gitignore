@@ -11,6 +11,8 @@ colormaps.h
 nctietue2.pc
 nct_functions_NC_*.c
 nct_functions.h
+nct_draw_NC_*.c
+nct_draw.h
 nct_gtk.c
 tools/nct_add_similars
 tools/nct_info
