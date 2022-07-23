@@ -25,10 +25,10 @@ void nct_add_varatt_text(nct_var* var, char* name, char* value, unsigned freeabl
 	var->atts = vp;
     }
     var->atts[var->natts++] = (nct_att){ .name     = name,
-					   .value    = value,
-					   .xtype    = NC_STRING,
-					   .len      = strlen(value)+1,
-					   .freeable = freeable };
+					 .value    = value,
+					 .xtype    = NC_STRING,
+					 .len      = strlen(value)+1,
+					 .freeable = freeable };
     return;
 failed:
     var->attcapacity = var->natts;
@@ -88,7 +88,7 @@ failed:
 /* dimids can contain negative values indicating dimension to be created
  * dimnames can contain non-existent names that will be created if dimids==NULL */
 nct_var* nct_add_var_(nct_vset* vset, void* src, nc_type xtype, char* name,
-			  int ndims, int* dimids, size_t* dimlens, char** dimnames) {
+		      int ndims, int* dimids, size_t* dimlens, char** dimnames) {
     if(dimids)
 	return nct_add_var_dimids(vset, src, xtype, name, ndims, dimids, dimlens, dimnames);
     int ids[ndims];
@@ -100,7 +100,7 @@ nct_var* nct_add_var_(nct_vset* vset, void* src, nc_type xtype, char* name,
 /* This is used like nct_add_var but dimids must not be NULL.
    If all dimids are given (non-negative), then this is like nct_add_var. */
 nct_var* nct_add_var_dimids(nct_vset* vset, void* src, nc_type xtype, char* name,
-				  int ndims, int* dimids, size_t* dimlens, char** dimnames) {
+			    int ndims, int* dimids, size_t* dimlens, char** dimnames) {
     int new_dims = 0;
     for(int i=0; i<ndims; i++)
 	if(dimids[i]<0) new_dims++;
