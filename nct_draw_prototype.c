@@ -1,3 +1,5 @@
+#define A echo_highlight
+#define B nct_default_color
 static void draw2d_echo_##nctype(ctype minmax[]) {
     printf("%s%s%s%s: min %s%" #form "%s, max %s%" #form "%s\033[K\n"
 	   "x: %s%s(%zu)%s, y: %s%s(%zu)%s\033[K\033[s\n"
@@ -14,9 +16,9 @@ static void draw2d_echo_##nctype(ctype minmax[]) {
 	printf("\033[u z: %s%s(%i/%zu)%s\n\033[2B\n",
 	       A,NCTVARDIM(*var, zid).name,znum+1,NCTVARDIM(*var, zid).len,B);
 }
+#undef A
+#undef B
 
-#define A echo_highlight
-#define B nct_default_color
 static void draw2d_##nctype(nct_var* var) {
     int xlen = NCTVARDIM(*var, xid).len;
     float di=0, dj=0;
@@ -25,7 +27,7 @@ static void draw2d_##nctype(nct_var* var) {
     range = minmax[1]-minmax[0];
     minmax[0] += range*minshift;
     minmax[1] += range*maxshift;
-    draw2d_echo(minmax);
+    draw2d_echo_##nctype(minmax);
 
     size_t offset = znum*stepsize_z;
     SDL_SetRenderDrawColor(rend, color_bg[0], color_bg[1], color_bg[2], 255);
@@ -61,5 +63,3 @@ static void draw2d_##nctype(nct_var* var) {
     }
     draw_colormap();
 }
-#undef A
-#undef B

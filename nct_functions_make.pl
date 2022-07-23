@@ -21,7 +21,8 @@ for ($i=0; $i<$len0; $i++) {
 	print C "#define ctype @ctypes[$j]\n#define form @formats[$j]\n\n";
 	seek IN, 0, 0;
 	while(<IN>) {
-	    $_ =~ s/##nctype/@nctypes[$j]/;
+	    $_ =~ s/##nctype/@nctypes[$j]/g;
+	    $_ =~ s/#form/\"@formats[$j]\"/g;
 	    print C $_;
 	}
 	print C "\n#undef ctype\n#undef form\n";
