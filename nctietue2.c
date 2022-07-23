@@ -341,19 +341,25 @@ failed:
     return dest;
 }
 
-nct_var* nct_next_truevar0(nct_var* var) {
-    int len = var->super->nvars;
+nct_var* nct_last_truevar(nct_var* var, int offset) {
     int this = nct_get_id_thisvar(var);
-    for(int i=this; i<len; i++)
+    for(int i=this+offset; i>=0; i--)
 	if(nct_get_id_thisdim(var->super->vars[i]) < 0)
 	    return var->super->vars[i];
     return NULL;
 }
 
-nct_var* nct_next_truevar1(nct_var* var) {
+int nct_last_truevar_i(nct_vset* vset, int i0) {
+    for(int i=i0; i>=0; i--)
+	if(nct_get_id_thisdim(vset->vars[i]) < 0)
+	    return i;
+    return -1;
+}
+
+nct_var* nct_next_truevar(nct_var* var, int offset) {
     int len = var->super->nvars;
     int this = nct_get_id_thisvar(var);
-    for(int i=this+1; i<len; i++)
+    for(int i=this+offset; i<len; i++)
 	if(nct_get_id_thisdim(var->super->vars[i]) < 0)
 	    return var->super->vars[i];
     return NULL;

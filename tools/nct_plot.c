@@ -59,7 +59,7 @@ int main(int argc, char** argv) {
     if(varname)
 	var = &NCTVAR(*vset, varname);
     else
-	var = nct_next_truevar0(vset->vars[0]);
+	var = nct_next_truevar(vset->vars[0], 0);
     if(!var) {
 	NCFUNK(nc_close, vset->ncid);
 	nct_free_vset(vset);

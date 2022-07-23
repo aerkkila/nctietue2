@@ -201,8 +201,13 @@ void cmap_ichange(Arg jump) {
 
 void var_ichange(Arg jump) {
     nct_var* v;
-    if(!(v = nct_next_truevar1(var)))
-	v = nct_next_truevar0(var->super->vars[0]);
+    if(jump.i > 0) {
+	if(!(v = nct_next_truevar(var, jump.i)))
+	    v = nct_next_truevar(var->super->vars[0], 0);
+    } else {
+	if(!(v = nct_last_truevar(var, jump.i)))
+	    v = nct_last_truevar(var->super->vars[var->super->nvars-1], 0);
+    }
     if(!v) {
 	puts("This is impossible. A variable was not found.");
 	return;
@@ -235,6 +240,7 @@ Binding keydown_bindings[] = {
     { SDLK_c,     KMOD_SHIFT, cmap_ichange,  {.i=-1}        },
     { SDLK_c,     KMOD_ALT,   toggle_var,    {.v=&invert_c} },
     { SDLK_v,     0,          var_ichange,   {.i=1}         },
+    { SDLK_v,     KMOD_SHIFT, var_ichange,   {.i=-1}        },
     { SDLK_RIGHT, 0,          inc_znum,      {.i=1}         },
     { SDLK_LEFT,  0,          inc_znum,      {.i=-1}        },
 };
