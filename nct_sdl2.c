@@ -14,7 +14,7 @@ static SDL_Texture* base;
 static nct_var* var;
 static int win_w, win_h, xid, yid, zid, draw_w, draw_h, znum;
 static size_t stepsize_z;
-static int invert_y, invert_c, stop, echo_on=1, has_echoed, fill_on;
+static int invert_y, invert_c, stop, echo_on=1, has_echoed, fill_on, play_on;
 static int cmapnum=18, cmappix=30, cmapspace=10, call_resized, call_redraw;
 static float space, minshift, maxshift;
 static unsigned char color_fg[3] = {255, 255, 255};
@@ -235,6 +235,7 @@ Binding keydown_bindings[] = {
     { SDLK_2,     KMOD_SHIFT, shift_max,     {.f=0.02}      },
     { SDLK_e,     0,          toggle_var,    {.v=&echo_on}  },
     { SDLK_f,     0,          toggle_var,    {.v=&fill_on}  },
+    { SDLK_SPACE, 0,          toggle_var,    {.v=&play_on}  },
     { SDLK_PAUSE, KMOD_SHIFT, debug_break,   {0}            },
     { SDLK_c,     0,          cmap_ichange,  {.i=1}         },
     { SDLK_c,     KMOD_SHIFT, cmap_ichange,  {.i=-1}        },
@@ -281,9 +282,12 @@ static void mainloop() {
 		keydown_func();
 	    if(stop) return;
 	}
-	if(stop) return;
+
+	if(stop)         return;
 	if(call_resized) resized();
-	if(call_redraw) redraw(var);
+	if(call_redraw)  redraw(var);
+	if(play_on)      inc_znum((Arg){.i=1});
+
 	SDL_RenderCopy(rend, base, NULL, NULL);
 	SDL_RenderPresent(rend);
 	SDL_Delay(8);
@@ -320,7 +324,7 @@ void nct_plot_var(nct_var* _var) {
     base = SDL_CreateTexture(rend, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, win_w, win_h);
     set_draw_params();
 
-    stop = has_echoed = 0;
+    stop = has_echoed = play_on = 0;
     redraw(var);
 
     mainloop();
