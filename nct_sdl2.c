@@ -12,6 +12,7 @@ static SDL_Renderer* rend;
 static SDL_Window* window;
 static SDL_Texture* base;
 static nct_var* var;
+static Uint32 sleeptime = 8; // ms
 static int win_w, win_h, xid, yid, zid, draw_w, draw_h, znum;
 static size_t stepsize_z;
 static int invert_y, invert_c, stop, echo_on=1, has_echoed, fill_on, play_on;
@@ -165,28 +166,28 @@ static void resized() {
 	return;
     }
     call_resized = 0;
+    call_redraw = 1;
     lasttime = thistime;
     SDL_DestroyTexture(base);
     SDL_GetWindowSize(window, &win_w, &win_h);
     base = SDL_CreateTexture(rend, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, win_w, win_h);
     set_draw_params();
-    redraw(var);
 }
 
 void shift_min(Arg shift) {
     minshift += shift.f;
-    redraw(var);
+    call_redraw = 1;
 }
 
 void shift_max(Arg shift) {
     maxshift += shift.f;
-    redraw(var);
+    call_redraw = 1;
 }
 
 void toggle_var(Arg intarg) {
     *(int*)intarg.v = !*(int*)intarg.v;
     set_draw_params();
-    redraw(var);
+    call_redraw = 1;
 }
 
 void debug_break(Arg _) {
@@ -196,7 +197,7 @@ void debug_break(Arg _) {
 void cmap_ichange(Arg jump) {
     int len = ARRSIZE(colormaps) / 2;
     cmapnum = (cmapnum+len+jump.i) % len;
-    redraw(var);
+    call_redraw = 1;
 }
 
 void var_ichange(Arg jump) {
@@ -217,17 +218,16 @@ void var_ichange(Arg jump) {
 	nct_load_var(var, -1);
     set_xid_and_yid();
     set_draw_params();
-    redraw(var);
+    call_redraw = 1;
 }
 
 void inc_znum(Arg intarg) {
     size_t zlen = NCTVARDIM(*var,zid).len;
     znum = (znum + zlen + intarg.i) % zlen;
-    redraw(var);
+    call_redraw = 1;
 }
 
 Binding keydown_bindings[] = {
-    { SDLK_i,     0,          toggle_var,    {.v=&invert_y} },
     { SDLK_q,     0,          quit,          {0}            },
     { SDLK_1,     0,          shift_min,     {.f=-0.02}     },
     { SDLK_1,     KMOD_SHIFT, shift_max,     {.f=-0.02}     },
@@ -236,6 +236,7 @@ Binding keydown_bindings[] = {
     { SDLK_e,     0,          toggle_var,    {.v=&echo_on}  },
     { SDLK_f,     0,          toggle_var,    {.v=&fill_on}  },
     { SDLK_SPACE, 0,          toggle_var,    {.v=&play_on}  },
+    { SDLK_i,     0,          toggle_var,    {.v=&invert_y} },
     { SDLK_PAUSE, KMOD_SHIFT, debug_break,   {0}            },
     { SDLK_c,     0,          cmap_ichange,  {.i=1}         },
     { SDLK_c,     KMOD_SHIFT, cmap_ichange,  {.i=-1}        },
@@ -272,26 +273,26 @@ void keydown_func() {
 }
 
 static void mainloop() {
-    while(1) {
-	while(SDL_PollEvent(&event)) {
-	    if(event.type == SDL_QUIT)
-		quit((Arg){0});
-	    else if(event.type==SDL_WINDOWEVENT && event.window.event==SDL_WINDOWEVENT_RESIZED)
-		call_resized = 1;
-	    else if(event.type==SDL_KEYDOWN)
-		keydown_func();
-	    if(stop) return;
-	}
-
-	if(stop)         return;
-	if(call_resized) resized();
-	if(call_redraw)  redraw(var);
-	if(play_on)      inc_znum((Arg){.i=1});
-
-	SDL_RenderCopy(rend, base, NULL, NULL);
-	SDL_RenderPresent(rend);
-	SDL_Delay(8);
+start:
+    while(SDL_PollEvent(&event)) {
+	if(event.type == SDL_QUIT)
+	    quit((Arg){0});
+	else if(event.type==SDL_WINDOWEVENT && event.window.event==SDL_WINDOWEVENT_RESIZED)
+	    call_resized = 1;
+	else if(event.type==SDL_KEYDOWN)
+	    keydown_func();
+	if(stop) return;
     }
+
+    if(stop)         return;
+    if(call_resized) resized();
+    if(call_redraw)  redraw(var);
+    if(play_on)      inc_znum((Arg){.i=1});
+
+    SDL_RenderCopy(rend, base, NULL, NULL);
+    SDL_RenderPresent(rend);
+    SDL_Delay(sleeptime);
+    goto start;
 }
 
 void nct_plot_var(nct_var* _var) {
@@ -325,7 +326,7 @@ void nct_plot_var(nct_var* _var) {
     set_draw_params();
 
     stop = has_echoed = play_on = 0;
-    redraw(var);
+    call_redraw = 1;
 
     mainloop();
 }
