@@ -12,10 +12,11 @@ static SDL_Renderer* rend;
 static SDL_Window* window;
 static SDL_Texture* base;
 static nct_var* var;
-static Uint32 sleeptime = 8; // ms
+static const Uint32 default_sleep=8; // ms
+static Uint32 sleeptime;
 static int win_w, win_h, xid, yid, zid, draw_w, draw_h, znum;
 static size_t stepsize_z;
-static int invert_y, invert_c, stop, echo_on=1, has_echoed, fill_on, play_on;
+static int invert_y, invert_c, stop, echo_on=1, has_echoed, fill_on, play_on, play_inv;
 static int cmapnum=18, cmappix=30, cmapspace=10, call_resized, call_redraw;
 static float space, minshift, maxshift;
 static unsigned char color_fg[3] = {255, 255, 255};
@@ -184,10 +185,14 @@ void shift_max(Arg shift) {
     call_redraw = 1;
 }
 
-void toggle_var(Arg intarg) {
-    *(int*)intarg.v = !*(int*)intarg.v;
+void toggle_var(Arg intptr) {
+    *(int*)intptr.v = !*(int*)intptr.v;
     set_draw_params();
     call_redraw = 1;
+}
+
+void negation(Arg intptr) {
+    *(int*)intptr.v = -*(int*)intptr.v;
 }
 
 void debug_break(Arg _) {
@@ -227,24 +232,35 @@ void inc_znum(Arg intarg) {
     call_redraw = 1;
 }
 
+void set_sleep(Arg _) {
+    printf("\033[sEnter sleeptime in ms (default = %i): ", default_sleep);
+    fflush(stdout);
+    if(scanf("%i", &sleeptime) != 1)
+	sleeptime = default_sleep;
+    printf("\033[u\033[K");
+    fflush(stdout);
+}
+
 Binding keydown_bindings[] = {
-    { SDLK_q,     0,          quit,          {0}            },
-    { SDLK_1,     0,          shift_min,     {.f=-0.02}     },
-    { SDLK_1,     KMOD_SHIFT, shift_max,     {.f=-0.02}     },
-    { SDLK_2,     0,          shift_min,     {.f=0.02}      },
-    { SDLK_2,     KMOD_SHIFT, shift_max,     {.f=0.02}      },
-    { SDLK_e,     0,          toggle_var,    {.v=&echo_on}  },
-    { SDLK_f,     0,          toggle_var,    {.v=&fill_on}  },
-    { SDLK_SPACE, 0,          toggle_var,    {.v=&play_on}  },
-    { SDLK_i,     0,          toggle_var,    {.v=&invert_y} },
-    { SDLK_PAUSE, KMOD_SHIFT, debug_break,   {0}            },
-    { SDLK_c,     0,          cmap_ichange,  {.i=1}         },
-    { SDLK_c,     KMOD_SHIFT, cmap_ichange,  {.i=-1}        },
-    { SDLK_c,     KMOD_ALT,   toggle_var,    {.v=&invert_c} },
-    { SDLK_v,     0,          var_ichange,   {.i=1}         },
-    { SDLK_v,     KMOD_SHIFT, var_ichange,   {.i=-1}        },
-    { SDLK_RIGHT, 0,          inc_znum,      {.i=1}         },
-    { SDLK_LEFT,  0,          inc_znum,      {.i=-1}        },
+    { SDLK_q,     0,          quit,          {0}             },
+    { SDLK_PAUSE, KMOD_SHIFT, debug_break,   {0}             },
+    { SDLK_1,     0,          shift_min,     {.f=-0.02}      },
+    { SDLK_1,     KMOD_SHIFT, shift_max,     {.f=-0.02}      },
+    { SDLK_2,     0,          shift_min,     {.f=0.02}       },
+    { SDLK_2,     KMOD_SHIFT, shift_max,     {.f=0.02}       },
+    { SDLK_e,     0,          toggle_var,    {.v=&echo_on}   },
+    { SDLK_f,     0,          toggle_var,    {.v=&fill_on}   },
+    { SDLK_i,     0,          toggle_var,    {.v=&invert_y}  },
+    { SDLK_SPACE, 0,          toggle_var,    {.v=&play_on}   },
+    { SDLK_SPACE, KMOD_SHIFT, toggle_var,    {.v=&play_inv}  },
+    { SDLK_c,     0,          cmap_ichange,  {.i=1}          },
+    { SDLK_c,     KMOD_SHIFT, cmap_ichange,  {.i=-1}         },
+    { SDLK_c,     KMOD_ALT,   toggle_var,    {.v=&invert_c}  },
+    { SDLK_v,     0,          var_ichange,   {.i=1}          },
+    { SDLK_v,     KMOD_SHIFT, var_ichange,   {.i=-1}         },
+    { SDLK_RIGHT, 0,          inc_znum,      {.i=1}          },
+    { SDLK_LEFT,  0,          inc_znum,      {.i=-1}         },
+    { SDLK_s,     0,          set_sleep,     {0}             },
 };
 
 int get_modstate() {
@@ -287,6 +303,8 @@ start:
     if(stop)         return;
     if(call_resized) resized();
     if(call_redraw)  redraw(var);
+    if(zid < 0)      play_inv = play_on = 0;
+    if(play_inv)     {inc_znum((Arg){.i=-1}); play_on=0;}
     if(play_on)      inc_znum((Arg){.i=1});
 
     SDL_RenderCopy(rend, base, NULL, NULL);
@@ -325,7 +343,8 @@ void nct_plot_var(nct_var* _var) {
     base = SDL_CreateTexture(rend, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, win_w, win_h);
     set_draw_params();
 
-    stop = has_echoed = play_on = 0;
+    sleeptime = default_sleep;
+    stop = has_echoed = play_on = play_inv = 0;
     call_redraw = 1;
 
     mainloop();
