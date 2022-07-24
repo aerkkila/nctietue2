@@ -233,6 +233,7 @@ nct_vset* nct_read_var(nct_vset* vset, int varid);
 nct_vset* nct_read_var_info(nct_vset *vset, int varid);
 nct_var*  nct_to_var(void* arr, size_t len, nc_type xtype, char* name);
 nct_var*  nct_to_var_gd(nct_var* dest, void* arr, size_t len, nc_type xtype, char* name);
+nct_var*  nct_unload_var(nct_var* var);
 nct_var*  nct_varcpy(nct_var* src);
 nct_var*  nct_varcpy_gd(nct_var* dest, nct_var* src);
 size_t    nct_vardim_steplen(nct_var* var, int dimnum);

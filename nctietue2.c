@@ -264,8 +264,19 @@ size_t nct_get_varlen(nct_var* var) {
     return len;
 }
 
-void nct_init() {
-    printf("nct_init puuttuu\n");
+nct_var* nct_last_truevar(nct_var* var, int offset) {
+    int this = nct_get_id_thisvar(var);
+    for(int i=this+offset; i>=0; i--)
+	if(nct_get_id_thisdim(var->super->vars[i]) < 0)
+	    return var->super->vars[i];
+    return NULL;
+}
+
+int nct_last_truevar_i(nct_vset* vset, int i0) {
+    for(int i=i0; i>=0; i--)
+	if(nct_get_id_thisdim(vset->vars[i]) < 0)
+	    return i;
+    return -1;
 }
 
 nct_var* nct_load_var(nct_var* var, int ncvarid) {
@@ -339,21 +350,6 @@ failed:
     dest->varcapacity = dest->nvars;
     fprintf(stderr, "realloc failed in nct_move_vset_tosimilar\n");
     return dest;
-}
-
-nct_var* nct_last_truevar(nct_var* var, int offset) {
-    int this = nct_get_id_thisvar(var);
-    for(int i=this+offset; i>=0; i--)
-	if(nct_get_id_thisdim(var->super->vars[i]) < 0)
-	    return var->super->vars[i];
-    return NULL;
-}
-
-int nct_last_truevar_i(nct_vset* vset, int i0) {
-    for(int i=i0; i>=0; i--)
-	if(nct_get_id_thisdim(vset->vars[i]) < 0)
-	    return i;
-    return -1;
 }
 
 nct_var* nct_next_truevar(nct_var* var, int offset) {
@@ -475,6 +471,13 @@ nct_vset* nct_read_ncfile_info_gd(nct_vset* dest, const char* restrict filename)
 nct_vset* nct_read_ncfile_info_gd0(nct_vset* dest, const char* restrict filename) {
     memset(dest, 0, sizeof(nct_vset));
     return nct_read_ncfile_info_gd(dest, filename);
+}
+
+nct_var* nct_unload_var(nct_var* var) {
+    if(!var->nonfreeable_data)
+	free(var->data);
+    var->data = NULL;
+    return var;
 }
 
 nct_var* nct_var_dropdim_first(nct_var* var) {

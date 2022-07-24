@@ -214,7 +214,7 @@ void var_ichange(Arg jump) {
     }
     var = v;
     if(!var->data)
-	nct_load_var(var, nct_get_id_thisvar(var));
+	nct_load_var(var, -1);
     set_xid_and_yid();
     set_draw_params();
     redraw(var);
