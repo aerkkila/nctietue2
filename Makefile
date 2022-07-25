@@ -3,7 +3,7 @@ cfiles=nctietue2.c internals.h nct_png.c nct_sdl2.c nct_functions.h colormaps.h
 hfiles=nctietue2.h
 
 libnctietue2.so: ${cfiles} nctietue2.h
-	gcc -Wall -shared -fpic -g3 -gdwarf-2 -o $@ nctietue2.c -Og
+	gcc -Wall -shared -fpic -g3 -gdwarf-2 -o $@ nctietue2.c -O0
 
 nctietue2.pc: nctietue2.pc.1 config.mk
 	cat config.mk nctietue2.pc.1 > nctietue2.pc

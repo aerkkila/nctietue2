@@ -36,6 +36,10 @@ static void draw2d_##nctype(nct_var* var) {
 	for(int j=draw_h-1; j>=0; j--, dj+=space) {
 	    for(int i=0; i<draw_w; i++, di+=space) {
 		ctype val = ((ctype*)var->data)[offset + (size_t)dj*xlen + (size_t)di];
+#if __nctype__==NC_DOUBLE || __nctype__==NC_FLOAT
+		if(val != val)
+		    continue;
+#endif
 		int value = ( val <  minmax[0]? 0   :
 			      val >= minmax[1]? 255 :
 			      (val - minmax[0]) * 255 / (minmax[1]-minmax[0]) );
@@ -50,6 +54,10 @@ static void draw2d_##nctype(nct_var* var) {
 	for(int j=0; j<draw_h; j++, dj+=space) {
 	    for(int i=0; i<draw_w; i++, di+=space) {
 		ctype val = ((ctype*)var->data)[offset + (size_t)dj*xlen + (size_t)di];
+#if __nctype__==NC_DOUBLE || __nctype__==NC_FLOAT
+		if(val != val)
+		    continue;
+#endif
 		int value = ( val <  minmax[0]? 0   :
 			      val >= minmax[1]? 255 :
 			      (val - minmax[0]) * 255 / (minmax[1]-minmax[0]) );

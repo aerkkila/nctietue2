@@ -18,14 +18,14 @@ for ($i=0; $i<$len0; $i++) {
 	$a =~ s/prototype/$nctypes[$j]/;
 
 	open C, ">$a";
-	print C "#define ctype @ctypes[$j]\n#define form @formats[$j]\n\n";
+	print C "#define ctype @ctypes[$j]\n#define form @formats[$j]\n#define __nctype__ @nctypes[$j]\n\n";
 	seek IN, 0, 0;
 	while(<IN>) {
 	    $_ =~ s/##nctype/@nctypes[$j]/g;
 	    $_ =~ s/#form/\"@formats[$j]\"/g;
 	    print C $_;
 	}
-	print C "\n#undef ctype\n#undef form\n";
+	print C "\n#undef ctype\n#undef form\n#undef __nctype__\n";
 	close C;
 
 	print H "#include \"$a\"\n";

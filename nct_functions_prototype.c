@@ -5,9 +5,15 @@ ctype nct_varmax_##nctype(nct_var* var) {
 nct_anyd nct_varmax_anyd_##nctype(nct_var* var) {
     if(!(var->len=nct_get_varlen(var)))
 	return (nct_anyd){ {0}, -1 };
+#if __nctype__==NC_FLOAT || __nctype__==NC_DOUBLE
+    size_t numi=0;
+    ctype num = -INFINITY;
+    for(int i=0; i<var->len; i++)
+#else
     size_t numi=0;
     ctype num = ((ctype*)var->data)[0];
     for(size_t i=1; i<var->len; i++)
+#endif
 	if(num < ((ctype*)var->data)[i])
 	    num = ((ctype*)var->data)[numi=i];
     return (nct_anyd){ {.form=num}, numi };
@@ -20,9 +26,16 @@ ctype nct_varmin_##nctype(nct_var* var) {
 nct_anyd nct_varmin_anyd_##nctype(nct_var* var) {
     if(!(var->len=nct_get_varlen(var)))
 	return (nct_anyd){ {0}, -1 };
+    /* using the first value would not work with nan-values */
+#if __nctype__==NC_FLOAT || __nctype__==NC_DOUBLE
+    size_t numi=0;
+    ctype num = INFINITY;
+    for(int i=0; i<var->len; i++)
+#else
     size_t numi=0;
     ctype num = ((ctype*)var->data)[0];
     for(size_t i=1; i<var->len; i++)
+#endif
 	if(num > ((ctype*)var->data)[i])
 	    num = ((ctype*)var->data)[numi=i];
     return (nct_anyd){ {.form=num}, numi };
@@ -30,8 +43,15 @@ nct_anyd nct_varmin_anyd_##nctype(nct_var* var) {
 
 void* nct_varminmax_##nctype(nct_var* var, void* resultv) {
     ctype maxval, minval, *result=resultv;
+    /* using the first value would not work with nan-values */
+#if __nctype__==NC_FLOAT || __nctype__==NC_DOUBLE
+    maxval = -INFINITY;
+    minval = INFINITY;
+    for(int i=0; i<var->len; i++)
+#else
     maxval = minval = ((ctype*)var->data)[0];
     for(int i=1; i<var->len; i++)
+#endif
 	if(maxval < ((ctype*)var->data)[i])
 	    maxval = ((ctype*)var->data)[i];
 	else if(minval > ((ctype*)var->data)[i])
@@ -63,7 +83,7 @@ nct_var* nct_varmean_first_##nctype(nct_var* var) {
 }
 
 nct_var* nct_varmeannan_first_##nctype(nct_var* var) {
-#if nctype==NC_FLOAT || nctype==NC_DOUBLE
+#if __nctype__==NC_FLOAT || __nctype__==NC_DOUBLE
     size_t zerolen = NCTVARDIM(*var,0).len;
     size_t new_len = nct_get_varlen(var) / zerolen;
     for(size_t i=0; i<new_len; i++) {
