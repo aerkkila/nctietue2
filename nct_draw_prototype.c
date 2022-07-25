@@ -1,13 +1,15 @@
 #define A echo_highlight
 #define B nct_default_color
 static void draw2d_echo_##nctype(ctype minmax[]) {
-    printf("%s%s%s%s: min %s%" #form "%s, max %s%" #form "%s\033[K\n"
+    if(!has_echoed++)
+	for(int i=0; i<5; i++)
+	    putchar('\n');
+    printf("\033[5F%s%s%s: min %s%" #form "%s, max %s%" #form "%s\033[K\n"
 	   "x: %s%s(%zu)%s, y: %s%s(%zu)%s\033[K\033[s\n"
 	   "minshift %s%.4f%s, maxshift %s%.4f%s\033[K\n"
 	   "space = %s%.4f%s\033[K\n"
 	   "colormap = %s%s%s\033[K\n",
-	   has_echoed++? "\033[5F": "", A,var->name,B,
-	   A,minmax[0],B, A,minmax[1],B,
+	   A,var->name,B, A,minmax[0],B, A,minmax[1],B,
 	   A,NCTVARDIM(*var, xid).name,NCTVARDIM(*var, xid).len,B,
 	   A,NCTVARDIM(*var, yid).name,NCTVARDIM(*var, yid).len,B,
 	   A,minshift,B, A,maxshift,B,
